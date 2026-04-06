@@ -1,12 +1,14 @@
 # TISH SEARCH v4 - Production Docker Image
 FROM python:3.11-slim
 
-# Устанавливаем системные зависимости
+# Устанавливаем системные зависимости + wget/gnupg для Playwright
 RUN apt-get update && apt-get install -y \
     gcc \
     g++ \
     libpq-dev \
     curl \
+    wget \
+    gnupg \
     && rm -rf /var/lib/apt/lists/*
 
 # Создаём рабочую директорию
@@ -16,9 +18,9 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Устанавливаем Playwright браузеры
-RUN playwright install chromium
-RUN playwright install-deps chromium
+# Устанавливаем Playwright браузеры С ЗАВИСИМОСТЯМИ
+# КРИТИЧНО: --with-deps устанавливает все системные библиотеки для Chromium
+RUN npx playwright install --with-deps chromium
 
 # Копируем код приложения
 COPY . .
