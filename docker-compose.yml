@@ -1,0 +1,141 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: tish_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: tish_db
+      POSTGRES_USER: ${DB_USER:-tish_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-change_me_production_password}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --lc-collate=C --lc-ctype=C"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5432:5432"
+    networks:
+      - tish_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-tish_user}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis (для Celery и кэширования)
+  redis:
+    image: redis:7-alpine
+    container_name: tish_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    networks:
+      - tish_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Flask Application
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: tish_web
+    restart: unless-stopped
+    environment:
+      - DATABASE_URL=postgresql://${DB_USER:-tish_user}:${DB_PASSWORD:-change_me_production_password}@postgres:5432/tish_db
+      - SECRET_KEY=${SECRET_KEY}
+      - ADMIN_USERNAME=${ADMIN_USERNAME}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD}
+      - OLLAMA_URL=${OLLAMA_URL:-http://host.docker.internal:11434}
+      - VISION_MODEL=${VISION_MODEL:-llava:latest}
+      - MAX_WORKERS=${MAX_WORKERS:-4}
+      - FLASK_ENV=production
+      - REDIS_URL=redis://redis:6379/0
+    ports:
+      - "5000:5000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - tish_network
+    volumes:
+      - ./reports:/app/reports
+      - ./screenshots:/app/screenshots
+      - ./uploads:/app/uploads
+
+  # Celery Worker (фоновые задачи)
+  celery:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: tish_celery
+    restart: unless-stopped
+    command: celery -A celery_worker worker --loglevel=info --concurrency=4
+    environment:
+      - DATABASE_URL=postgresql://${DB_USER:-tish_user}:${DB_PASSWORD:-change_me_production_password}@postgres:5432/tish_db
+      - SECRET_KEY=${SECRET_KEY}
+      - OLLAMA_URL=${OLLAMA_URL:-http://host.docker.internal:11434}
+      - VISION_MODEL=${VISION_MODEL:-llava:latest}
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - tish_network
+    volumes:
+      - ./reports:/app/reports
+      - ./screenshots:/app/screenshots
+
+  # Celery Beat (периодические задачи)
+  celery_beat:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: tish_celery_beat
+    restart: unless-stopped
+    command: celery -A celery_worker beat --loglevel=info
+    environment:
+      - DATABASE_URL=postgresql://${DB_USER:-tish_user}:${DB_PASSWORD:-change_me_production_password}@postgres:5432/tish_db
+      - SECRET_KEY=${SECRET_KEY}
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - tish_network
+
+  # Nginx (reverse proxy + SSL)
+  nginx:
+    image: nginx:alpine
+    container_name: tish_nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
+      - ./static:/app/static:ro
+    depends_on:
+      - web
+    networks:
+      - tish_network
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  tish_network:
+    driver: bridge

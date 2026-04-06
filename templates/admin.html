@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Admin Panel — TISH SEARCH</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Unbounded:wght@300;400;700;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0a0015;--bg2:#140626;--bg3:#1a0d3d;--surface:#1f1140;
+  --bdr:#2d1a4a;--bdr2:#3d2a5a;
+  --cyan:#00d4ff;--green:#00ff88;--amber:#ffb830;--red:#ff4455;--purple:#d946ef;
+  --text:#e0d9ff;--text2:#b8a8d8;--text3:#7a6a9a;
+  --head:'Unbounded',sans-serif;--mono:'JetBrains Mono',monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:linear-gradient(135deg,#0a0008,#0d001a,#1a0030);color:var(--text);font-family:var(--mono);min-height:100vh;padding:20px}
+.wrap{max-width:1400px;margin:0 auto}
+
+/* HEADER */
+header{display:flex;align-items:center;gap:16px;margin-bottom:30px;padding:20px;background:rgba(31,17,64,0.3);border:1px solid var(--bdr);border-radius:16px}
+header h1{font-family:var(--head);font-size:24px;background:linear-gradient(90deg,#ff4455,#d946ef);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+header p{color:var(--text3);font-size:11px}
+.admin-badge{margin-left:auto;background:rgba(255,68,85,.15);color:var(--red);border:1px solid rgba(255,68,85,.4);padding:8px 16px;border-radius:999px;font-size:11px;font-weight:700}
+.btn-back{background:transparent;border:1px solid var(--bdr);color:var(--text2);padding:8px 16px;border-radius:8px;font-size:11px;cursor:pointer;text-decoration:none}
+.btn-back:hover{border-color:var(--cyan);color:var(--cyan)}
+
+/* STATS GRID */
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:24px}
+.stat-card{background:rgba(31,17,64,0.3);border:1px solid var(--bdr);border-radius:12px;padding:20px;position:relative;overflow:hidden}
+.stat-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--cyan),var(--purple))}
+.stat-label{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px}
+.stat-value{font-size:28px;font-weight:900;color:var(--cyan);font-family:var(--head)}
+.stat-sub{font-size:10px;color:var(--text3);margin-top:4px}
+
+/* PANELS */
+.panel{background:rgba(31,17,64,0.3);border:1px solid var(--bdr);border-radius:12px;margin-bottom:20px;overflow:hidden}
+.panel-header{padding:16px 20px;border-bottom:1px solid var(--bdr);font-size:12px;text-transform:uppercase;letter-spacing:2px;color:var(--text2);display:flex;align-items:center;gap:8px}
+.panel-body{padding:20px}
+
+/* ONLINE USERS */
+.online-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px}
+.online-card{background:var(--bg2);border:1px solid var(--bdr);border-radius:8px;padding:14px;transition:all .2s}
+.online-card:hover{border-color:var(--cyan);transform:translateY(-2px)}
+.online-card-header{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.online-dot{width:8px;height:8px;border-radius:50%;background:var(--green);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(0,255,136,.4)}50%{box-shadow:0 0 0 6px rgba(0,255,136,0)}}
+.online-username{font-weight:700;font-size:13px}
+.online-id{font-size:10px;color:var(--text3)}
+.online-details{font-size:11px;color:var(--text2);line-height:1.6}
+.online-badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:9px;font-weight:700;text-transform:uppercase;margin-left:6px}
+.badge-admin{background:rgba(255,68,85,.15);color:var(--red);border:1px solid rgba(255,68,85,.3)}
+.badge-enterprise{background:rgba(217,70,239,.15);color:var(--purple);border:1px solid rgba(217,70,239,.3)}
+.badge-pro{background:rgba(0,212,255,.15);color:var(--cyan);border:1px solid rgba(0,212,255,.3)}
+.badge-basic{background:rgba(0,255,136,.15);color:var(--green);border:1px solid rgba(0,255,136,.3)}
+
+/* LOAD METRICS */
+.load-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px}
+.load-card{background:var(--bg2);border:1px solid var(--bdr);border-radius:8px;padding:16px}
+.load-card h4{font-size:12px;color:var(--text2);margin-bottom:12px;text-transform:uppercase;letter-spacing:1px}
+.load-bar{height:8px;background:var(--bg3);border-radius:999px;overflow:hidden;margin-bottom:8px}
+.load-bar-fill{height:100%;border-radius:999px;transition:width .5s}
+.load-bar-fill.low{background:linear-gradient(90deg,var(--green),#00cc6a)}
+.load-bar-fill.medium{background:linear-gradient(90deg,var(--amber),#ff9500)}
+.load-bar-fill.high{background:linear-gradient(90deg,var(--red),#ff2244)}
+.load-stats{display:flex;justify-content:space-between;font-size:11px;color:var(--text3)}
+
+/* USERS TABLE */
+.users-table{width:100%;border-collapse:collapse;font-size:11px}
+.users-table th{text-align:left;padding:10px 12px;border-bottom:2px solid var(--bdr);color:var(--text3);font-size:10px;text-transform:uppercase;letter-spacing:1px}
+.users-table td{padding:10px 12px;border-bottom:1px solid var(--bdr)}
+.users-table tr:hover{background:rgba(0,212,255,.05)}
+.user-status{padding:3px 8px;border-radius:4px;font-size:9px;font-weight:700;text-transform:uppercase}
+.status-active{background:rgba(0,255,136,.1);color:var(--green)}
+.status-inactive{background:rgba(255,68,85,.1);color:var(--red)}
+.status-queue{background:rgba(0,212,255,.1);color:var(--cyan)}
+
+/* ACTIONS */
+.action-btn{padding:6px 12px;border:1px solid var(--bdr);border-radius:6px;background:transparent;color:var(--text2);font-size:10px;cursor:pointer;transition:all .2s;margin-right:6px}
+.action-btn:hover{border-color:var(--cyan);color:var(--cyan)}
+.action-btn.danger:hover{border-color:var(--red);color:var(--red)}
+
+/* REFRESH */
+.refresh-btn{position:fixed;bottom:20px;right:20px;background:linear-gradient(135deg,var(--cyan),var(--purple));color:#fff;border:none;padding:12px 20px;border-radius:999px;font-size:11px;font-weight:700;cursor:pointer;box-shadow:0 4px 16px rgba(0,212,255,.3)}
+.refresh-btn:hover{transform:translateY(-2px);box-shadow:0 6px 24px rgba(0,212,255,.4)}
+
+@media(max-width:900px){.stats-grid{grid-template-columns:repeat(2,1fr)}.online-grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>🛡️ Admin Panel</h1>
+      <p>Мониторинг и управление системой</p>
+    </div>
+    <div class="admin-badge">👑 ADMIN: {{ current_user.username }}</div>
+    <a href="/" class="btn-back">← На главную</a>
+  </header>
+
+  <!-- GLOBAL STATS -->
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-label">Пользователей онлайн</div>
+      <div class="stat-value" id="stat-online">{{ online_count }}</div>
+      <div class="stat-sub">из {{ total_users }} всего</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Активных задач</div>
+      <div class="stat-value" id="stat-tasks">{{ active_tasks }}</div>
+      <div class="stat-sub">анализов сейчас</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Нагрузка CPU</div>
+      <div class="stat-value" id="stat-cpu">{{ cpu_percent }}%</div>
+      <div class="stat-sub">{{ cpu_cores }} ядер</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Использование RAM</div>
+      <div class="stat-value" id="stat-ram">{{ ram_used }} MB</div>
+      <div class="stat-sub">из {{ ram_total }} MB</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Запросов/час</div>
+      <div class="stat-value" id="stat-requests">{{ requests_per_hour }}</div>
+      <div class="stat-sub">текущий час</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Сайтов в БД</div>
+      <div class="stat-value" id="stat-db">{{ db_sites }}</div>
+      <div class="stat-sub">{{ db_cities }} городов</div>
+    </div>
+  </div>
+
+  <!-- ONLINE USERS -->
+  <div class="panel">
+    <div class="panel-header">
+      👥 Пользователи онлайн <span style="margin-left:auto;color:var(--text3);font-size:10px">Обновляется каждые 10с</span>
+    </div>
+    <div class="panel-body">
+      <div class="online-grid" id="online-users">
+        {% for user in online_users %}
+        <div class="online-card">
+          <div class="online-card-header">
+            <div class="online-dot"></div>
+            <div>
+              <div class="online-username">
+                {{ user.username }}
+                {% if user.subscription_plan == 'enterprise' %}
+                <span class="online-badge badge-enterprise">Enterprise</span>
+                {% elif user.subscription_plan == 'pro' %}
+                <span class="online-badge badge-pro">Pro</span>
+                {% else %}
+                <span class="online-badge badge-basic">Basic</span>
+                {% endif %}
+              </div>
+              <div class="online-id">ID: {{ user.main_site_id or user.id }} • Приоритет: {{ user.priority or 1 }}</div>
+            </div>
+          </div>
+          <div class="online-details">
+            <div>📧 {{ user.email }}</div>
+            <div>🕐 Вошёл: {{ user.last_login[:16] if user.last_login else 'N/A' }}</div>
+            <div>📊 Городов сегодня: {{ user.cities_today or 0 }}/{{ user.max_cities or '∞' }}</div>
+            {% if user.current_task %}
+            <div style="color:var(--cyan);margin-top:6px">⚡ Выполняет: {{ user.current_task }}</div>
+            {% else %}
+            <div style="color:var(--text3);margin-top:6px">⏸️ Ожидает</div>
+            {% endif %}
+          </div>
+        </div>
+        {% else %}
+        <div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--text3)">
+          Нет пользователей онлайн
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <!-- SYSTEM LOAD -->
+  <div class="panel">
+    <div class="panel-header">📈 Нагрузка системы</div>
+    <div class="panel-body">
+      <div class="load-grid">
+        <div class="load-card">
+          <h4>🔥 CPU Usage</h4>
+          <div class="load-bar">
+            <div class="load-bar-fill {% if cpu_percent < 50 %}low{% elif cpu_percent < 80 %}medium{% else %}high{% endif %}" style="width:{{ cpu_percent }}%"></div>
+          </div>
+          <div class="load-stats">
+            <span>{{ cpu_percent }}%</span>
+            <span>{{ cpu_cores }} cores</span>
+          </div>
+        </div>
+        <div class="load-card">
+          <h4>💾 RAM Usage</h4>
+          <div class="load-bar">
+            <div class="load-bar-fill {% if ram_percent < 50 %}low{% elif ram_percent < 80 %}medium{% else %}high{% endif %}" style="width:{{ ram_percent }}%"></div>
+          </div>
+          <div class="load-stats">
+            <span>{{ ram_used }} MB / {{ ram_total }} MB</span>
+            <span>{{ ram_percent }}%</span>
+          </div>
+        </div>
+        <div class="load-card">
+          <h4>🌐 Активных WebSocket</h4>
+          <div class="load-bar">
+            <div class="load-bar-fill {% if ws_connections < 10 %}low{% elif ws_connections < 20 %}medium{% else %}high{% endif %}" style="width:{{ ws_percent }}%"></div>
+          </div>
+          <div class="load-stats">
+            <span>{{ ws_connections }} подключений</span>
+            <span>{{ ws_percent }}%</span>
+          </div>
+        </div>
+        <div class="load-card">
+          <h4>💽 Database Size</h4>
+          <div class="load-bar">
+            <div class="load-bar-fill low" style="width:{{ db_size_percent }}%"></div>
+          </div>
+          <div class="load-stats">
+            <span>{{ db_size_mb }} MB</span>
+            <span>{{ db_sites }} записей</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ALL USERS -->
+  <div class="panel">
+    <div class="panel-header">👤 Все пользователи</div>
+    <div class="panel-body" style="overflow-x:auto">
+      <table class="users-table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Username</th>
+            <th>Email</th>
+            <th>План</th>
+            <th>Приоритет</th>
+            <th>Статус</th>
+            <th>Последний вход</th>
+            <th>Действия</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for user in all_users %}
+          <tr>
+            <td>{{ user.main_site_id or user.id }}</td>
+            <td>{{ user.username }}</td>
+            <td>{{ user.email }}</td>
+            <td>
+              {% if user.subscription_plan == 'enterprise' %}
+              <span class="online-badge badge-enterprise">Enterprise</span>
+              {% elif user.subscription_plan == 'pro' %}
+              <span class="online-badge badge-pro">Pro</span>
+              {% else %}
+              <span class="online-badge badge-basic">Basic</span>
+              {% endif %}
+            </td>
+            <td>{{ user.priority or 1 }}/4</td>
+            <td>
+              {% if user.is_online %}
+              <span class="user-status status-active">🟢 Онлайн</span>
+              {% elif user.current_task %}
+              <span class="user-status status-queue">⚡ В очереди</span>
+              {% else %}
+              <span class="user-status status-inactive">⚫ Оффлайн</span>
+              {% endif %}
+            </td>
+            <td>{{ user.last_login[:16] if user.last_login else 'Никогда' }}</td>
+            <td>
+              <button class="action-btn" onclick="viewUser({{ user.id }})">👁️ Просмотр</button>
+              <button class="action-btn" onclick="setPriority({{ user.id }})">⬆️ Приоритет</button>
+              <button class="action-btn danger" onclick="banUser({{ user.id }})">🚫 Бан</button>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<button class="refresh-btn" onclick="location.reload()">🔄 Обновить</button>
+
+<script>
+// Автообновление каждые 10 секунд
+setInterval(() => location.reload(), 10000);
+
+function viewUser(userId) {
+  alert(`Просмотр пользователя ID: ${userId}\n\nВ полной версии здесь будет детальная информация о пользователе`);
+}
+
+function setPriority(userId) {
+  const priority = prompt(`Установить приоритет для пользователя ID: ${userId}\n\n1 - Low\n2 - Normal\n3 - High\n4 - VIP\n\nВведите число (1-4):`, '2');
+  if (priority && priority >= 1 && priority <= 4) {
+    fetch(`/admin/api/set-priority`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({user_id: userId, priority: parseInt(priority)})
+    })
+    .then(r => r.json())
+    .then(data => {
+      if (data.success) {
+        alert(`✅ Приоритет установлен: ${priority}`);
+        location.reload();
+      } else {
+        alert(`❌ Ошибка: ${data.error}`);
+      }
+    });
+  }
+}
+
+function banUser(userId) {
+  if (confirm(`Вы уверены что хотите заблокировать пользователя ID: ${userId}?`)) {
+    fetch(`/admin/api/ban-user`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({user_id: userId})
+    })
+    .then(r => r.json())
+    .then(data => {
+      if (data.success) {
+        alert(`✅ Пользователь заблокирован`);
+        location.reload();
+      } else {
+        alert(`❌ Ошибка: ${data.error}`);
+      }
+    });
+  }
+}
+</script>
+</body>
+</html>

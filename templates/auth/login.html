@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="{{ current_language or 'ru' }}">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>{{ _('auth.login') }} - TISH SEARCH</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Unbounded:wght@300;400;700;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0a0015;--bg2:#140626;--bg3:#1a0d3d;--surface:#1f1140;
+  --bdr:#2d1a4a;--bdr2:#3d2a5a;
+  --cyan:#00d4ff;--green:#00ff88;--amber:#ffb830;--red:#ff4455;--purple:#d946ef;
+  --text:#e0d9ff;--text2:#b8a8d8;--text3:#7a6a9a;
+  --head:'Unbounded',sans-serif;--mono:'JetBrains Mono',monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:linear-gradient(135deg,#0a0008,#0d001a,#1a0030);color:var(--text);font-family:var(--mono);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+.wrap{width:100%;max-width:420px}
+.logo{text-align:center;margin-bottom:32px}
+.logo h1{font-family:var(--head);font-size:24px;font-weight:900;background:linear-gradient(90deg,#00d4ff,#7c3aed,#d946ef);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.logo p{font-size:11px;color:var(--text3);letter-spacing:2px;text-transform:uppercase;margin-top:4px}
+.panel{background:rgba(31,17,64,0.3);backdrop-filter:blur(10px);border:1px solid var(--bdr);border-radius:16px;padding:32px}
+.panel h2{font-family:var(--head);font-size:20px;margin-bottom:24px;text-align:center}
+.form-group{margin-bottom:18px}
+.form-group label{display:block;font-size:11px;color:var(--text2);margin-bottom:6px;letter-spacing:1px;text-transform:uppercase}
+.form-group input{width:100%;background:var(--bg2);border:1px solid var(--bdr2);border-radius:10px;padding:12px 14px;font-family:var(--mono);font-size:14px;color:var(--text);outline:none;transition:border-color .2s}
+.form-group input:focus{border-color:var(--cyan)}
+.form-group input::placeholder{color:var(--text3)}
+.checkbox-row{display:flex;align-items:center;gap:8px;margin-bottom:18px}
+.checkbox-row input[type="checkbox"]{width:16px;height:16px;accent-color:var(--purple)}
+.checkbox-row label{font-size:12px;color:var(--text2)}
+.btn{width:100%;border:none;border-radius:10px;padding:14px;font-family:var(--head);font-size:13px;font-weight:700;cursor:pointer;transition:all .2s;background:linear-gradient(135deg,#d946ef,#f472b6);color:#0a0015}
+.btn:hover{filter:brightness(1.1);transform:translateY(-1px)}
+.links{text-align:center;margin-top:20px;font-size:11px;color:var(--text3)}
+.links a{color:var(--cyan);text-decoration:none;transition:color .2s}
+.links a:hover{color:var(--purple)}
+.flash{padding:10px 14px;border-radius:8px;margin-bottom:16px;font-size:12px}
+.flash.error{background:rgba(255,68,85,.1);border:1px solid rgba(255,68,85,.3);color:var(--red)}
+.flash.success{background:rgba(0,255,136,.1);border:1px solid rgba(0,255,136,.3);color:var(--green)}
+.flash.info{background:rgba(0,212,255,.1);border:1px solid rgba(0,212,255,.3);color:var(--cyan)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="logo">
+    <h1>TISH SEARCH</h1>
+    <p>Multi-Agent Site Analyzer</p>
+  </div>
+  <div class="panel">
+    <h2>{{ _('auth.login') }}</h2>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="flash {{ category }}">{{ message }}</div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+    <form method="POST" action="/auth/login">
+      <div class="form-group">
+        <label for="login">{{ _('auth.email') }} {{ _('common.or') }} {{ _('auth.username') }}</label>
+        <input type="text" id="login" name="login" placeholder="user@example.com" required>
+      </div>
+      <div class="form-group">
+        <label for="password">{{ _('auth.password') }}</label>
+        <input type="password" id="password" name="password" placeholder="••••••••" required>
+      </div>
+      <div class="checkbox-row">
+        <input type="checkbox" id="remember" name="remember">
+        <label for="remember">{{ _('auth.remember_me') }}</label>
+      </div>
+      <button type="submit" class="btn">{{ _('auth.login') }}</button>
+    </form>
+    <div class="links">
+      <a href="/auth/forgot-password">{{ _('auth.forgot_password') }}</a><br><br>
+      {{ _('auth.no_account') }} <a href="/auth/register">{{ _('auth.register_here') }}</a><br><br>
+      <select onchange="location.href='?lang=' + this.value" style="background:var(--bg2);border:1px solid var(--bdr2);border-radius:6px;padding:6px;color:var(--text);font-family:var(--mono);font-size:11px;">
+        <option value="ru" {% if current_language == 'ru' %}selected{% endif %}>Русский</option>
+        <option value="en" {% if current_language == 'en' %}selected{% endif %}>English</option>
+      </select>
+    </div>
+  </div>
+</div>
+</body>
+</html>

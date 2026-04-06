@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Admin Login — TISH SEARCH</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Unbounded:wght@300;400;700;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0a0015;--bg2:#140626;--bg3:#1a0d3d;--surface:#1f1140;
+  --bdr:#2d1a4a;--bdr2:#3d2a5a;
+  --cyan:#00d4ff;--green:#00ff88;--amber:#ffb830;--red:#ff4455;--purple:#d946ef;
+  --text:#e0d9ff;--text2:#b8a8d8;--text3:#7a6a9a;
+  --head:'Unbounded',sans-serif;--mono:'JetBrains Mono',monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:linear-gradient(135deg,#0a0008,#0d001a,#1a0030);color:var(--text);font-family:var(--mono);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+.wrap{width:100%;max-width:420px}
+.logo{text-align:center;margin-bottom:32px}
+.logo h1{font-family:var(--head);font-size:24px;font-weight:900;background:linear-gradient(90deg,#ff4455,#d946ef);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.logo p{font-size:11px;color:var(--text3);letter-spacing:2px;text-transform:uppercase;margin-top:4px}
+.panel{background:rgba(31,17,64,0.3);backdrop-filter:blur(10px);border:1px solid var(--bdr);border-radius:16px;padding:32px}
+.panel h2{font-family:var(--head);font-size:20px;margin-bottom:8px;text-align:center}
+.panel .subtitle{font-size:11px;color:var(--text3);text-align:center;margin-bottom:24px}
+.form-group{margin-bottom:18px}
+.form-group label{display:block;font-size:11px;color:var(--text2);margin-bottom:6px;letter-spacing:1px;text-transform:uppercase}
+.form-group input{width:100%;background:var(--bg2);border:1px solid var(--bdr2);border-radius:10px;padding:12px 14px;font-family:var(--mono);font-size:14px;color:var(--text);outline:none;transition:border-color .2s}
+.form-group input:focus{border-color:var(--red)}
+.form-group input::placeholder{color:var(--text3)}
+.btn{width:100%;border:none;border-radius:10px;padding:14px;font-family:var(--head);font-size:13px;font-weight:700;cursor:pointer;transition:all .2s;background:linear-gradient(135deg,#ff4455,#d946ef);color:#fff}
+.btn:hover{filter:brightness(1.1);transform:translateY(-1px)}
+.flash{padding:10px 14px;border-radius:8px;margin-bottom:16px;font-size:12px;background:rgba(255,68,85,.1);border:1px solid rgba(255,68,85,.3);color:var(--red)}
+.back-link{text-align:center;margin-top:20px;font-size:11px}
+.back-link a{color:var(--cyan);text-decoration:none}
+.back-link a:hover{color:var(--purple)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="logo">
+    <h1>🛡️ Admin Panel</h1>
+    <p>TISH SEARCH — Управление системой</p>
+  </div>
+  <div class="panel">
+    <h2>Вход администратора</h2>
+    <p class="subtitle">Доступ только для авторизованных администраторов</p>
+    
+    {% if error %}
+    <div class="flash">❌ {{ error }}</div>
+    {% endif %}
+    
+    <form method="POST" action="/admin/login" id="loginForm">
+      <div class="form-group">
+        <label for="username">Логин администратора</label>
+        <input type="text" id="username" name="username" placeholder="TISH_TEAM_SEARCH" required>
+      </div>
+      <div class="form-group">
+        <label for="password">Пароль администратора</label>
+        <input type="password" id="password" name="password" placeholder="••••••••" required>
+      </div>
+      <button type="submit" class="btn">🔐 Войти в админ-панель</button>
+    </form>
+    
+    <div class="back-link">
+      <a href="/">← Вернуться на главную</a>
+    </div>
+  </div>
+</div>
+
+<script>
+// Автоматическая отправка формы как JSON если нужно
+document.getElementById('loginForm').addEventListener('submit', function(e) {
+  // Обычная отправка формы
+});
+</script>
+</body>
+</html>

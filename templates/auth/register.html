@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="{{ current_language or 'ru' }}">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>{{ _('auth.register') }} - TISH SEARCH</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Unbounded:wght@300;400;700;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0a0015;--bg2:#140626;--bg3:#1a0d3d;--surface:#1f1140;
+  --bdr:#2d1a4a;--bdr2:#3d2a5a;
+  --cyan:#00d4ff;--green:#00ff88;--amber:#ffb830;--red:#ff4455;--purple:#d946ef;
+  --text:#e0d9ff;--text2:#b8a8d8;--text3:#7a6a9a;
+  --head:'Unbounded',sans-serif;--mono:'JetBrains Mono',monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:linear-gradient(135deg,#0a0008,#0d001a,#1a0030);color:var(--text);font-family:var(--mono);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+.wrap{width:100%;max-width:460px}
+.logo{text-align:center;margin-bottom:32px}
+.logo h1{font-family:var(--head);font-size:24px;font-weight:900;background:linear-gradient(90deg,#00d4ff,#7c3aed,#d946ef);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.logo p{font-size:11px;color:var(--text3);letter-spacing:2px;text-transform:uppercase;margin-top:4px}
+.panel{background:rgba(31,17,64,0.3);backdrop-filter:blur(10px);border:1px solid var(--bdr);border-radius:16px;padding:32px}
+.panel h2{font-family:var(--head);font-size:20px;margin-bottom:24px;text-align:center}
+.form-group{margin-bottom:16px}
+.form-group label{display:block;font-size:11px;color:var(--text2);margin-bottom:6px;letter-spacing:1px;text-transform:uppercase}
+.form-group input{width:100%;background:var(--bg2);border:1px solid var(--bdr2);border-radius:10px;padding:12px 14px;font-family:var(--mono);font-size:14px;color:var(--text);outline:none;transition:border-color .2s}
+.form-group input:focus{border-color:var(--cyan)}
+.form-group input::placeholder{color:var(--text3)}
+.password-requirements{font-size:10px;color:var(--text3);margin-top:6px;padding:8px;background:var(--bg2);border-radius:6px}
+.btn{width:100%;border:none;border-radius:10px;padding:14px;font-family:var(--head);font-size:13px;font-weight:700;cursor:pointer;transition:all .2s;background:linear-gradient(135deg,#d946ef,#f472b6);color:#0a0015}
+.btn:hover{filter:brightness(1.1);transform:translateY(-1px)}
+.links{text-align:center;margin-top:20px;font-size:11px;color:var(--text3)}
+.links a{color:var(--cyan);text-decoration:none;transition:color .2s}
+.links a:hover{color:var(--purple)}
+.team-site-box{margin-top:16px;padding:14px;background:rgba(0,212,255,.05);border:1px solid rgba(0,212,255,.2);border-radius:10px;text-align:center}
+.team-site-box p{font-size:11px;color:var(--text2);margin-bottom:8px}
+.team-site-box a{color:var(--cyan);font-weight:700;text-decoration:none;transition:color .2s}
+.team-site-box a:hover{color:var(--purple)}
+.flash{padding:10px 14px;border-radius:8px;margin-bottom:16px;font-size:12px}
+.flash.error{background:rgba(255,68,85,.1);border:1px solid rgba(255,68,85,.3);color:var(--red)}
+.flash.success{background:rgba(0,255,136,.1);border:1px solid rgba(0,255,136,.3);color:var(--green)}
+.flash.info{background:rgba(0,212,255,.1);border:1px solid rgba(0,212,255,.3);color:var(--cyan)}
+.row{display:flex;gap:12px}
+.row .form-group{flex:1}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="logo">
+    <h1>TISH SEARCH</h1>
+    <p>Multi-Agent Site Analyzer</p>
+  </div>
+  <div class="panel">
+    <h2>{{ _('auth.register') }}</h2>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="flash {{ category }}">{{ message }}</div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+    <form method="POST" action="/auth/register">
+      <div class="form-group">
+        <label for="username">{{ _('auth.username') }}</label>
+        <input type="text" id="username" name="username" placeholder="username" required pattern="[a-zA-Z0-9_-]{3,30}">
+      </div>
+      <div class="form-group">
+        <label for="email">{{ _('auth.email') }}</label>
+        <input type="email" id="email" name="email" placeholder="user@example.com" required>
+      </div>
+      <div class="row">
+        <div class="form-group">
+          <label for="password">{{ _('auth.password') }}</label>
+          <input type="password" id="password" name="password" placeholder="••••••••" required>
+        </div>
+        <div class="form-group">
+          <label for="confirm_password">{{ _('auth.confirm_password') }}</label>
+          <input type="password" id="confirm_password" name="confirm_password" placeholder="••••••••" required>
+        </div>
+      </div>
+      <div class="password-requirements">
+        <strong>{{ _('auth.password_requirements') }}</strong><br>
+        • {{ _('auth.password_min_chars') }}<br>
+        • {{ _('auth.password_uppercase') }}<br>
+        • {{ _('auth.password_lowercase') }}<br>
+        • {{ _('auth.password_digit') }}
+      </div>
+      <br>
+      <button type="submit" class="btn">{{ _('auth.register_here') }}</button>
+    </form>
+    <div class="links">
+      {{ _('auth.have_account') }} <a href="/auth/login">{{ _('auth.login_here') }}</a><br><br>
+      <select class="lang-select" onchange="location.href='?lang=' + this.value">
+        <option value="ru" {% if current_language == 'ru' %}selected{% endif %}>Русский</option>
+        <option value="en" {% if current_language == 'en' %}selected{% endif %}>English</option>
+      </select>
+    </div>
+    <div class="team-site-box">
+      <p data-i18n="auth.register_on_team_site">Для регистрации необходимо сначала создать аккаунт на официальном сайте команды</p>
+      <a href="{{ config.TEAM_SITE_URL }}" target="_blank" data-i18n="auth.go_to_team_site">Перейти на сайт команды →</a>
+    </div>
+  </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,274 @@
+/* TISH SEARCH - Light & Dark Theme Support */
+
+/* ═══════════════════════════════════════════ */
+/* DARK THEME (default)                        */
+/* ═══════════════════════════════════════════ */
+:root {
+  --bg: #0a0015;
+  --bg2: #140626;
+  --bg3: #1a0d3d;
+  --surface: #1f1140;
+  --bdr: #2d1a4a;
+  --bdr2: #3d2a5a;
+  --cyan: #00d4ff;
+  --green: #00ff88;
+  --amber: #ffb830;
+  --red: #ff4455;
+  --purple: #d946ef;
+  --magenta: #f472b6;
+  --text: #e0d9ff;
+  --text2: #b8a8d8;
+  --text3: #7a6a9a;
+  --gradient-bg: linear-gradient(135deg, #0a0008 0%, #0d001a 25%, #1a0030 50%, #0f001f 75%, #0a0015 100%);
+  --panel-bg: rgba(31, 17, 64, 0.3);
+  --input-bg: var(--bg2);
+  --card-bg: var(--surface);
+  --hover-bg: rgba(217, 70, 239, 0.1);
+}
+
+/* ═══════════════════════════════════════════ */
+/* LIGHT THEME                                   */
+/* ═══════════════════════════════════════════ */
+body.light-theme {
+  --bg: #f8f9fa;
+  --bg2: #ffffff;
+  --bg3: #f0f2f5;
+  --surface: #ffffff;
+  --bdr: #e0e4e8;
+  --bdr2: #d1d5db;
+  --cyan: #0891b2;
+  --green: #059669;
+  --amber: #d97706;
+  --red: #dc2626;
+  --purple: #7c3aed;
+  --magenta: #db2777;
+  --text: #1f2937;
+  --text2: #4b5563;
+  --text3: #9ca3af;
+  --gradient-bg: linear-gradient(135deg, #f0f4f8 0%, #e8ecf4 25%, #f0e8f8 50%, #e8f0f4 75%, #f0f4f8 100%);
+  --panel-bg: rgba(255, 255, 255, 0.8);
+  --input-bg: #ffffff;
+  --card-bg: #ffffff;
+  --hover-bg: rgba(124, 58, 237, 0.05);
+}
+
+/* Light theme specific overrides */
+body.light-theme body {
+  background: var(--gradient-bg);
+}
+
+body.light-theme .panel,
+body.light-theme .scard,
+body.light-theme .prog,
+body.light-theme .results-panel {
+  background: var(--panel-bg);
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--bdr);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+}
+
+body.light-theme input,
+body.light-theme select,
+body.light-theme textarea {
+  background: var(--input-bg);
+  border-color: var(--bdr2);
+  color: var(--text);
+}
+
+body.light-theme input:focus,
+body.light-theme select:focus,
+body.light-theme textarea:focus {
+  border-color: var(--cyan);
+  box-shadow: 0 0 0 3px rgba(8, 145, 178, 0.1);
+}
+
+body.light-theme .btn {
+  background: linear-gradient(135deg, #7c3aed, #db2777);
+  color: #ffffff;
+}
+
+body.light-theme .btn-add,
+body.light-theme .btn-start {
+  background: linear-gradient(135deg, #7c3aed, #db2777);
+  color: #ffffff;
+}
+
+body.light-theme .phase {
+  background: var(--bg3);
+  border-color: var(--bdr);
+}
+
+body.light-theme .phase.searching {
+  background: rgba(124, 58, 237, 0.1);
+  color: #7c3aed;
+  border-color: rgba(124, 58, 237, 0.3);
+}
+
+body.light-theme .phase.analyzing {
+  background: rgba(8, 145, 178, 0.1);
+  color: #0891b2;
+  border-color: rgba(8, 145, 178, 0.3);
+}
+
+body.light-theme .phase.done {
+  background: rgba(5, 150, 105, 0.1);
+  color: #059669;
+  border-color: rgba(5, 150, 105, 0.3);
+}
+
+body.light-theme .sval {
+  color: var(--text);
+}
+
+body.light-theme .sval.c { color: #0891b2; }
+body.light-theme .sval.g { color: #059669; }
+body.light-theme .sval.a { color: #d97706; }
+body.light-theme .sval.r { color: #dc2626; }
+body.light-theme .sval.p { color: #7c3aed; }
+
+body.light-theme .rc-url {
+  color: #0891b2;
+}
+
+body.light-theme .rc-badge.l {
+  background: rgba(8, 145, 178, 0.1);
+  color: #0891b2;
+  border-color: rgba(8, 145, 178, 0.3);
+}
+
+body.light-theme .rc-badge.n {
+  background: rgba(5, 150, 105, 0.1);
+  color: #059669;
+  border-color: rgba(5, 150, 105, 0.3);
+}
+
+body.light-theme .chip.l {
+  background: rgba(8, 145, 178, 0.1);
+  color: #0891b2;
+  border-color: rgba(8, 145, 178, 0.3);
+}
+
+body.light-theme .chip.n {
+  background: rgba(5, 150, 105, 0.1);
+  color: #059669;
+  border-color: rgba(5, 150, 105, 0.3);
+}
+
+body.light-theme .le.info { color: var(--text2); }
+body.light-theme .le.success { color: #059669; }
+body.light-theme .le.warn { color: #d97706; }
+body.light-theme .le.error { color: #dc2626; }
+
+body.light-theme .db-val {
+  color: #0891b2;
+}
+
+body.light-theme .btn-dl {
+  background: linear-gradient(135deg, #f0fdf4, #ecfdf5);
+  border-color: #059669;
+  color: #059669;
+}
+
+body.light-theme .btn-dl:hover {
+  box-shadow: 0 0 16px rgba(124, 58, 237, 0.15);
+}
+
+body.light-theme .orb.o1 {
+  background: rgba(124, 58, 237, 0.04);
+}
+
+body.light-theme .orb.o2 {
+  background: rgba(8, 145, 178, 0.04);
+}
+
+body.light-theme .prog-track {
+  background: var(--bg3);
+}
+
+body.light-theme .prog-fill {
+  background: linear-gradient(90deg, #0891b2, #059669);
+}
+
+body.light-theme .rc-good {
+  background: rgba(5, 150, 105, 0.08);
+  color: #059669;
+  border-color: rgba(5, 150, 105, 0.3);
+}
+
+body.light-theme .rc-bad {
+  background: rgba(220, 38, 38, 0.08);
+  color: #dc2626;
+  border-color: rgba(220, 38, 38, 0.3);
+}
+
+body.light-theme .rc-score-btn {
+  background: rgba(8, 145, 178, 0.1);
+  color: #0891b2;
+  border-color: rgba(8, 145, 178, 0.3);
+}
+
+body.light-theme .rc-quick-score {
+  border-color: var(--bdr);
+  background: var(--bg2);
+  color: #0891b2;
+}
+
+body.light-theme .rc-quick-score:hover {
+  border-color: #0891b2;
+  background: rgba(8, 145, 178, 0.1);
+}
+
+body.light-theme .rc-quick-score.selected {
+  background: #0891b2;
+  color: #ffffff;
+}
+
+body.light-theme .btn-save-settings {
+  background: linear-gradient(135deg, #7c3aed, #db2777);
+  color: #ffffff;
+  border-color: #7c3aed;
+}
+
+body.light-theme .btn-save-settings:hover {
+  box-shadow: 0 0 16px rgba(124, 58, 237, 0.3);
+}
+
+body.light-theme .btn-sm:hover {
+  border-color: #dc2626;
+  color: #dc2626;
+}
+
+/* Theme toggle button */
+.theme-toggle {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: var(--panel-bg);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--bdr);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s;
+  z-index: 1000;
+}
+
+.theme-toggle:hover {
+  transform: scale(1.1);
+  box-shadow: 0 0 20px rgba(124, 58, 237, 0.2);
+}
+
+.theme-toggle svg {
+  width: 20px;
+  height: 20px;
+  fill: var(--text);
+}
+
+/* Transition for smooth theme switching */
+body, body * {
+  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+}
