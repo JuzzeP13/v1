@@ -52,6 +52,29 @@
     </div>
   </div>
 
+  <!-- GITHUB AUTO UPDATE -->
+  <div class="panel">
+    <div class="panel-header">🔄 Автообновление с GitHub</div>
+    <div class="panel-body">
+      <div class="update-status" id="github-update-status">Статус не проверен</div>
+      <div class="update-meta">
+        <div>Источник: <a id="github-source" href="https://github.com/JuzzeP13/v1" target="_blank" rel="noopener noreferrer">https://github.com/JuzzeP13/v1</a></div>
+        <div>Git на сервере: <code id="github-git-path">—</code></div>
+        <div>Ветка: <span id="github-branch">—</span></div>
+        <div>Ветка на GitHub: <span id="github-target-branch">—</span></div>
+        <div>Локальный коммит: <code id="github-local">—</code></div>
+        <div>Удалённый коммит: <code id="github-remote">—</code></div>
+        <div>Позади / Впереди: <span id="github-divergence">—</span></div>
+        <div>Локальные изменения: <span id="github-dirty">—</span></div>
+      </div>
+      <div class="update-actions">
+        <button class="action-btn" id="github-check-btn" onclick="checkGithubUpdate(true)">🔍 Проверить обновления</button>
+        <button class="action-btn" id="github-update-btn" onclick="runGithubUpdate()">⬇️ Обновить с GitHub</button>
+      </div>
+      <pre class="update-log" id="github-update-log">Лог обновления появится здесь.</pre>
+    </div>
+  </div>
+
   <!-- ONLINE USERS -->
   <div class="panel">
     <div class="panel-header">
