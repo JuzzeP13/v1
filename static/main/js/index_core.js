@@ -3,6 +3,18 @@ let firstResult = true;
 const chips = {};
 let currentLang = localStorage.getItem("tish-lang") || "ru";
 let translations = {};
+const THEME_STORAGE_KEY = "tish-theme";
+
+const THEME_LABELS = {
+  ru: {
+    dark: "Включить тёмную тему",
+    light: "Включить светлую тему"
+  },
+  en: {
+    dark: "Switch to dark theme",
+    light: "Switch to light theme"
+  }
+};
 
 const UI_TEXT = {
   ru: {
@@ -162,6 +174,7 @@ function applyTranslations() {
 
   // Re-render queue
   renderQueue(window.__lastQueue || [], window.__lastQueueDone || [], window.__lastCurrentCity || "");
+  updateThemeToggle();
 }
 
 async function setLanguage(lang) {
@@ -169,6 +182,48 @@ async function setLanguage(lang) {
   localStorage.setItem("tish-lang", currentLang);
   await loadTranslations(currentLang);
   applyTranslations();
+}
+
+function applyTheme(theme, persist = true) {
+  const nextTheme = theme === "light" ? "light" : "dark";
+  document.body.classList.toggle("light-theme", nextTheme === "light");
+  document.body.dataset.theme = nextTheme;
+
+  if (persist) {
+    localStorage.setItem(THEME_STORAGE_KEY, nextTheme);
+  }
+
+  updateThemeToggle(nextTheme);
+}
+
+function updateThemeToggle(theme) {
+  const toggle = document.getElementById("theme-toggle");
+  const icon = document.getElementById("theme-toggle-icon");
+
+  if (!toggle || !icon) {
+    return;
+  }
+
+  const activeTheme = theme || (document.body.classList.contains("light-theme") ? "light" : "dark");
+  const nextTheme = activeTheme === "light" ? "dark" : "light";
+  const langLabels = THEME_LABELS[currentLang] || THEME_LABELS.ru;
+  const ariaLabel = nextTheme === "light" ? langLabels.light : langLabels.dark;
+
+  icon.textContent = activeTheme === "light" ? "☀" : "🌙";
+  toggle.setAttribute("aria-label", ariaLabel);
+  toggle.title = ariaLabel;
+}
+
+function toggleTheme() {
+  const currentTheme = document.body.classList.contains("light-theme") ? "light" : "dark";
+  const nextTheme = currentTheme === "light" ? "dark" : "light";
+  applyTheme(nextTheme);
+}
+
+function initTheme() {
+  const storedTheme = localStorage.getItem(THEME_STORAGE_KEY);
+  const defaultTheme = storedTheme === "light" ? "light" : "dark";
+  applyTheme(defaultTheme, false);
 }
 
 // ── connect ──
@@ -904,4 +959,11 @@ function setYtLang(lang) {
   document.getElementById("yt-lang-en").style.background = lang === "EN" ? "rgba(0,212,255,.14)" : "transparent";
   document.getElementById("yt-lang-en").style.color = lang === "EN" ? "var(--cyan)" : "var(--text2)";
 }
+
+const themeToggleButton = document.getElementById("theme-toggle");
+if (themeToggleButton) {
+  themeToggleButton.addEventListener("click", toggleTheme);
+}
+
+initTheme();
 

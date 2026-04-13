@@ -219,13 +219,46 @@ socket.on("youtube_excel_error", d => {
 
 // ── HYPERSPACE WEBGL BACKGROUND ──
 const bgCanvas = document.getElementById("starfield");
+const LIGHT_THEME_CLASS = "light-theme";
+
+function getBgTheme() {
+  return document.body.classList.contains(LIGHT_THEME_CLASS) ? "light" : "dark";
+}
+
+function watchBgTheme(onChange) {
+  if (!document.body) return;
+  let lastTheme = getBgTheme();
+  const observer = new MutationObserver(() => {
+    const nextTheme = getBgTheme();
+    if (nextTheme === lastTheme) return;
+    lastTheme = nextTheme;
+    onChange(nextTheme);
+  });
+  observer.observe(document.body, { attributes: true, attributeFilter: ["class"] });
+}
+
+function hexToRgb(hex) {
+  const normalized = hex.replace("#", "");
+  const full = normalized.length === 3
+    ? normalized.split("").map(ch => ch + ch).join("")
+    : normalized;
+  const int = parseInt(full, 16);
+  return {
+    r: (int >> 16) & 255,
+    g: (int >> 8) & 255,
+    b: int & 255,
+  };
+}
+
 function initCanvasWarpFallback(canvas) {
   if (!canvas) return;
   const ctx = canvas.getContext("2d");
   if (!ctx) return;
 
   const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
-  const STAR_COUNT = isMobile ? 360 : 540;
+  const lowEndDevice = (navigator.hardwareConcurrency || 8) <= 4 || (navigator.deviceMemory || 8) <= 4;
+  const baseCount = isMobile ? 520 : 760;
+  const STAR_COUNT = Math.max(isMobile ? 420 : 500, Math.floor(baseCount * (lowEndDevice ? 0.8 : 1)));
   const stars = new Array(STAR_COUNT);
   const pointer = { x: 0, y: 0, tx: 0, ty: 0 };
   let w = 0;
@@ -234,8 +267,28 @@ function initCanvasWarpFallback(canvas) {
   let prev = performance.now();
   let warp = 0.2;
   let targetWarp = 0.2;
+  let themeMode = getBgTheme();
+  const darkPalette = ["#ffffff", "#00e5ff", "#f050ff", "#22f6d1", "#8f6bff", "#00b8ff"];
+  const lightPalette = ["#000000", "#141414", "#222222", "#2d2d2d", "#3a3a3a"];
+  const lightAccent = ["#6f87a4", "#9a6363"];
 
-  const palette = ["#ffffff", "#00e5ff", "#f050ff", "#22f6d1", "#8f6bff", "#00b8ff"];
+  function pickColor() {
+    if (themeMode !== "light") {
+      return darkPalette[(Math.random() * darkPalette.length) | 0];
+    }
+    if (Math.random() < 0.1) {
+      return lightAccent[(Math.random() * lightAccent.length) | 0];
+    }
+    return lightPalette[(Math.random() * lightPalette.length) | 0];
+  }
+
+  function setStarColor(star, hex) {
+    const rgb = hexToRgb(hex);
+    star.color = hex;
+    star.r = rgb.r;
+    star.g = rgb.g;
+    star.b = rgb.b;
+  }
 
   function resetStar(i, randomDepth = false) {
     const s = stars[i] || {};
@@ -245,10 +298,18 @@ function initCanvasWarpFallback(canvas) {
     s.y = Math.sin(a) * r;
     s.z = randomDepth ? (0.1 + Math.random() * 0.9) : (0.9 + Math.random() * 0.25);
     s.speed = (0.16 + Math.random() * 0.42) * (1 + r * 0.4);
-    s.tail = 0.035 + Math.random() * 0.11;
-    s.width = 0.5 + Math.random() * 1.5;
-    s.color = palette[(Math.random() * palette.length) | 0];
+    s.tail = themeMode === "light" ? (0.04 + Math.random() * 0.13) : (0.035 + Math.random() * 0.11);
+    s.width = themeMode === "light" ? (0.45 + Math.random() * 1.1) : (0.5 + Math.random() * 1.5);
+    setStarColor(s, pickColor());
     stars[i] = s;
+  }
+
+  function applyTheme(nextTheme) {
+    themeMode = nextTheme === "light" ? "light" : "dark";
+    for (let i = 0; i < STAR_COUNT; i++) {
+      if (!stars[i]) continue;
+      setStarColor(stars[i], pickColor());
+    }
   }
 
   function resize() {
@@ -274,6 +335,10 @@ function initCanvasWarpFallback(canvas) {
     pointer.ty = (e.clientY / h) * 2 - 1;
   }, { passive: true });
 
+  watchBgTheme(theme => {
+    applyTheme(theme);
+  });
+
   socket.on("state", data => {
     const phase = data?.phase || "idle";
     const active = (
@@ -293,56 +358,49 @@ function initCanvasWarpFallback(canvas) {
     pointer.x += (pointer.tx - pointer.x) * 0.08;
     pointer.y += (pointer.ty - pointer.y) * 0.08;
 
-    // Глубокий космос + пыль
     const cx = w * 0.5 + (-pointer.x * w * 0.045);
     const cy = h * 0.5 + (pointer.y * h * 0.03);
-    const bg = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.max(w, h) * 0.85);
-    bg.addColorStop(0, "rgba(24,5,58,0.75)");
-    bg.addColorStop(0.55, "rgba(10,3,34,0.78)");
-    bg.addColorStop(1, "rgba(5,1,18,0.9)");
-    ctx.fillStyle = bg;
-    ctx.fillRect(0, 0, w, h);
+    const isLight = themeMode === "light";
+    if (isLight) {
+      const bg = ctx.createLinearGradient(0, 0, 0, h);
+      bg.addColorStop(0, "#ffffff");
+      bg.addColorStop(1, "#f5f5f5");
+      ctx.globalCompositeOperation = "source-over";
+      ctx.fillStyle = bg;
+      ctx.fillRect(0, 0, w, h);
+    } else {
+      const bg = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.max(w, h) * 0.85);
+      bg.addColorStop(0, "rgba(24,5,58,0.75)");
+      bg.addColorStop(0.55, "rgba(10,3,34,0.78)");
+      bg.addColorStop(1, "rgba(5,1,18,0.9)");
+      ctx.fillStyle = bg;
+      ctx.fillRect(0, 0, w, h);
+      ctx.globalCompositeOperation = "lighter";
+    }
 
-    ctx.globalCompositeOperation = "lighter";
     for (let i = 0; i < STAR_COUNT; i++) {
       const s = stars[i];
-      s.z -= s.speed * dt * (0.45 + warp * 2.1);
+      const speedFactor = isLight ? (0.34 + warp * 1.6) : (0.45 + warp * 2.1);
+      s.z -= s.speed * dt * speedFactor;
       if (s.z <= 0.018) {
         resetStar(i, false);
         continue;
       }
 
       const invZ = 1 / s.z;
-      const invZT = 1 / (s.z + s.tail);
       const f = Math.min(w, h) * 0.54;
 
       const hx = cx + s.x * invZ * f;
       const hy = cy + s.y * invZ * f;
-      const tx = cx + s.x * invZT * f;
-      const ty = cy + s.y * invZT * f;
 
       const zN = 1 - Math.min(1, s.z);
-      const alphaTail = 0.03 + zN * 0.2;
-      const alphaHead = 0.28 + zN * 0.65;
-      const lw = s.width * (0.55 + zN * 1.75);
+      const alphaHead = isLight ? (0.45 + zN * 0.5) : (0.28 + zN * 0.65);
+      const pointRadius = s.width * (isLight ? (0.5 + zN * 1.15) : (0.55 + zN * 1.75));
 
-      const g = ctx.createLinearGradient(tx, ty, hx, hy);
-      g.addColorStop(0, "rgba(255,255,255,0)");
-      g.addColorStop(0.45, s.color + "22");
-      g.addColorStop(1, s.color + "ff");
-
-      ctx.strokeStyle = g;
-      ctx.lineWidth = lw;
-      ctx.globalAlpha = alphaTail;
+      const pointAlpha = isLight ? Math.min(1, alphaHead + 0.05) : Math.min(1, alphaHead);
+      ctx.fillStyle = `rgba(${s.r},${s.g},${s.b},${pointAlpha.toFixed(3)})`;
       ctx.beginPath();
-      ctx.moveTo(tx, ty);
-      ctx.lineTo(hx, hy);
-      ctx.stroke();
-
-      ctx.globalAlpha = alphaHead;
-      ctx.fillStyle = s.color;
-      ctx.beginPath();
-      ctx.arc(hx, hy, Math.max(0.8, lw * 0.52), 0, Math.PI * 2);
+      ctx.arc(hx, hy, Math.max(isLight ? 0.45 : 0.8, pointRadius * (isLight ? 0.34 : 0.52)), 0, Math.PI * 2);
       ctx.fill();
     }
     ctx.globalCompositeOperation = "source-over";
@@ -357,276 +415,315 @@ if (!window.THREE || !bgCanvas) {
   console.warn("[HYPERSPACE] Three.js недоступен, запускаю Canvas fallback.");
   initCanvasWarpFallback(bgCanvas);
 } else {
-const isMobileDevice = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
-const cpuCores = navigator.hardwareConcurrency || 4;
-const deviceMem = navigator.deviceMemory || 8;
+  const isMobileDevice = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+  const cpuCores = navigator.hardwareConcurrency || 4;
+  const deviceMem = navigator.deviceMemory || 8;
+  const lowEndDevice = cpuCores <= 4 || deviceMem <= 4;
+  let baseParticles = isMobileDevice ? 540 : 760;
+  if (lowEndDevice) baseParticles = Math.floor(baseParticles * 0.78);
+  const PARTICLE_COUNT = Math.max(isMobileDevice ? 420 : 500, Math.min(800, baseParticles));
+  const LAYER_COUNT = 4;
+  const DEPTH_START = -1800;
+  const DEPTH_END = 24;
+  const TUNNEL_RADIUS = 240;
+  const TAU = Math.PI * 2;
 
-let baseParticles = isMobileDevice ? 560 : 920;
-if (cpuCores <= 4 || deviceMem <= 4) baseParticles = Math.floor(baseParticles * 0.72);
-const PARTICLE_COUNT = Math.max(420, Math.min(1100, baseParticles));
-const LAYER_COUNT = 4;
-const DEPTH_START = -1800;
-const DEPTH_END = 24;
-const TUNNEL_RADIUS = 240;
-const TAU = Math.PI * 2;
+  let themeMode = getBgTheme();
+  const darkPalette = [
+    new THREE.Color("#ffffff"),
+    new THREE.Color("#00e5ff"),
+    new THREE.Color("#00b8ff"),
+    new THREE.Color("#22f6d1"),
+    new THREE.Color("#f050ff"),
+    new THREE.Color("#8f6bff"),
+  ];
+  const lightPalette = [
+    new THREE.Color("#000000"),
+    new THREE.Color("#141414"),
+    new THREE.Color("#202020"),
+    new THREE.Color("#2a2a2a"),
+    new THREE.Color("#363636"),
+  ];
+  const lightAccent = [
+    new THREE.Color("#6f87a4"),
+    new THREE.Color("#9a6363"),
+  ];
 
-const renderer = new THREE.WebGLRenderer({
-  canvas: bgCanvas,
-  antialias: true,
-  alpha: true,
-  powerPreference: "high-performance",
-});
-renderer.setClearColor(0x050012, 1);
-renderer.setPixelRatio(Math.min(isMobileDevice ? 1.5 : 2.2, window.devicePixelRatio || 1));
-renderer.outputColorSpace = THREE.SRGBColorSpace;
+  function pickThreeColor() {
+    if (themeMode !== "light") {
+      return darkPalette[(Math.random() * darkPalette.length) | 0];
+    }
+    if (Math.random() < 0.08) {
+      return lightAccent[(Math.random() * lightAccent.length) | 0];
+    }
+    return lightPalette[(Math.random() * lightPalette.length) | 0];
+  }
 
-const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera(66, window.innerWidth / window.innerHeight, 0.1, 2800);
-camera.position.z = 16;
+  const renderer = new THREE.WebGLRenderer({
+    canvas: bgCanvas,
+    antialias: true,
+    alpha: true,
+    powerPreference: "high-performance",
+  });
+  renderer.setPixelRatio(Math.min(isMobileDevice ? 1.5 : 2.2, window.devicePixelRatio || 1));
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
 
-const starRoot = new THREE.Group();
-scene.add(starRoot);
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(66, window.innerWidth / window.innerHeight, 0.1, 2800);
+  camera.position.z = 16;
 
-const palette = [
-  new THREE.Color("#ffffff"),
-  new THREE.Color("#00e5ff"),
-  new THREE.Color("#00b8ff"),
-  new THREE.Color("#22f6d1"),
-  new THREE.Color("#f050ff"),
-  new THREE.Color("#8f6bff"),
-];
+  const starRoot = new THREE.Group();
+  scene.add(starRoot);
 
-const particles = new Array(PARTICLE_COUNT);
-const streakPositions = new Float32Array(PARTICLE_COUNT * 2 * 3);
-const streakColors = new Float32Array(PARTICLE_COUNT * 2 * 3);
-const headPositions = new Float32Array(PARTICLE_COUNT * 3);
-const headColors = new Float32Array(PARTICLE_COUNT * 3);
+  const particles = new Array(PARTICLE_COUNT);
+  const headPositions = new Float32Array(PARTICLE_COUNT * 3);
+  const headColors = new Float32Array(PARTICLE_COUNT * 3);
 
-const streakGeometry = new THREE.BufferGeometry();
-streakGeometry.setAttribute("position", new THREE.BufferAttribute(streakPositions, 3));
-streakGeometry.setAttribute("color", new THREE.BufferAttribute(streakColors, 3));
+  const headGeometry = new THREE.BufferGeometry();
+  headGeometry.setAttribute("position", new THREE.BufferAttribute(headPositions, 3));
+  headGeometry.setAttribute("color", new THREE.BufferAttribute(headColors, 3));
 
-const headGeometry = new THREE.BufferGeometry();
-headGeometry.setAttribute("position", new THREE.BufferAttribute(headPositions, 3));
-headGeometry.setAttribute("color", new THREE.BufferAttribute(headColors, 3));
+  function makePointTexture(size, softGlow) {
+    const c = document.createElement("canvas");
+    c.width = size;
+    c.height = size;
+    const gx = c.getContext("2d");
+    const g = gx.createRadialGradient(size * 0.5, size * 0.5, 0, size * 0.5, size * 0.5, size * 0.5);
+    if (softGlow) {
+      g.addColorStop(0, "rgba(255,255,255,1)");
+      g.addColorStop(0.35, "rgba(255,255,255,0.92)");
+      g.addColorStop(1, "rgba(255,255,255,0)");
+    } else {
+      g.addColorStop(0, "rgba(255,255,255,1)");
+      g.addColorStop(0.68, "rgba(255,255,255,1)");
+      g.addColorStop(0.88, "rgba(255,255,255,0.24)");
+      g.addColorStop(1, "rgba(255,255,255,0)");
+    }
+    gx.fillStyle = g;
+    gx.fillRect(0, 0, size, size);
+    const tex = new THREE.CanvasTexture(c);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    return tex;
+  }
 
-const streakMaterial = new THREE.LineBasicMaterial({
-  vertexColors: true,
-  transparent: true,
-  opacity: 0.98,
-  blending: THREE.AdditiveBlending,
-  depthWrite: false,
-});
-const streaks = new THREE.LineSegments(streakGeometry, streakMaterial);
-starRoot.add(streaks);
+  const glowHeadTexture = makePointTexture(96, true);
+  const crispHeadTexture = makePointTexture(72, false);
 
-function makeGlowTexture(size, inner = "rgba(255,255,255,1)", outer = "rgba(255,255,255,0)") {
-  const c = document.createElement("canvas");
-  c.width = size;
-  c.height = size;
-  const gx = c.getContext("2d");
-  const g = gx.createRadialGradient(size * 0.5, size * 0.5, 0, size * 0.5, size * 0.5, size * 0.5);
-  g.addColorStop(0, inner);
-  g.addColorStop(0.35, "rgba(255,255,255,.92)");
-  g.addColorStop(1, outer);
-  gx.fillStyle = g;
-  gx.fillRect(0, 0, size, size);
-  const tex = new THREE.CanvasTexture(c);
-  tex.colorSpace = THREE.SRGBColorSpace;
-  return tex;
-}
-
-const headTexture = makeGlowTexture(96);
-
-const haloMaterial = new THREE.PointsMaterial({
-  size: isMobileDevice ? 9 : 12,
-  map: headTexture,
-  transparent: true,
-  opacity: 0.24,
-  vertexColors: true,
-  depthWrite: false,
-  blending: THREE.AdditiveBlending,
-  sizeAttenuation: true,
-});
-const halos = new THREE.Points(headGeometry, haloMaterial);
-starRoot.add(halos);
-
-const headMaterial = new THREE.PointsMaterial({
-  size: isMobileDevice ? 3.8 : 4.8,
-  map: headTexture,
-  transparent: true,
-  opacity: 0.95,
-  vertexColors: true,
-  depthWrite: false,
-  blending: THREE.AdditiveBlending,
-  sizeAttenuation: true,
-});
-const heads = new THREE.Points(headGeometry, headMaterial);
-starRoot.add(heads);
-
-const dustCount = isMobileDevice ? 320 : 560;
-const dustGeo = new THREE.BufferGeometry();
-const dustPos = new Float32Array(dustCount * 3);
-const dustCol = new Float32Array(dustCount * 3);
-for (let i = 0; i < dustCount; i++) {
-  const r = TUNNEL_RADIUS * (1.15 + Math.random() * 0.9);
-  const a = Math.random() * TAU;
-  const d = DEPTH_START + Math.random() * (DEPTH_END - DEPTH_START);
-  dustPos[i * 3] = Math.cos(a) * r;
-  dustPos[i * 3 + 1] = Math.sin(a) * r;
-  dustPos[i * 3 + 2] = d;
-  const v = 0.16 + Math.random() * 0.18;
-  dustCol[i * 3] = v * 0.7;
-  dustCol[i * 3 + 1] = v * 0.8;
-  dustCol[i * 3 + 2] = v;
-}
-dustGeo.setAttribute("position", new THREE.BufferAttribute(dustPos, 3));
-dustGeo.setAttribute("color", new THREE.BufferAttribute(dustCol, 3));
-const dust = new THREE.Points(
-  dustGeo,
-  new THREE.PointsMaterial({
-    size: 1.6,
+  const haloMaterial = new THREE.PointsMaterial({
+    size: isMobileDevice ? 9 : 12,
+    map: glowHeadTexture,
     transparent: true,
-    opacity: 0.18,
+    opacity: 0.24,
     vertexColors: true,
     depthWrite: false,
     blending: THREE.AdditiveBlending,
     sizeAttenuation: true,
-  })
-);
-starRoot.add(dust);
+  });
+  const halos = new THREE.Points(headGeometry, haloMaterial);
+  starRoot.add(halos);
 
-function rand(min, max) {
-  return min + Math.random() * (max - min);
-}
+  const headMaterial = new THREE.PointsMaterial({
+    size: isMobileDevice ? 3.8 : 4.8,
+    map: glowHeadTexture,
+    transparent: true,
+    opacity: 0.95,
+    vertexColors: true,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+    sizeAttenuation: true,
+  });
+  const heads = new THREE.Points(headGeometry, headMaterial);
+  starRoot.add(heads);
 
-function resetParticle(i, randomDepth = false) {
-  const layer = i % LAYER_COUNT;
-  const radius = Math.pow(Math.random(), 0.58) * TUNNEL_RADIUS * (0.72 + layer * 0.16);
-  const angle = Math.random() * TAU;
-  const color = palette[(Math.random() * palette.length) | 0];
+  const dustCount = isMobileDevice ? 260 : 420;
+  const dustGeo = new THREE.BufferGeometry();
+  const dustPos = new Float32Array(dustCount * 3);
+  const dustCol = new Float32Array(dustCount * 3);
+  for (let i = 0; i < dustCount; i++) {
+    const r = TUNNEL_RADIUS * (1.1 + Math.random() * 0.9);
+    const a = Math.random() * TAU;
+    const d = DEPTH_START + Math.random() * (DEPTH_END - DEPTH_START);
+    dustPos[i * 3] = Math.cos(a) * r;
+    dustPos[i * 3 + 1] = Math.sin(a) * r;
+    dustPos[i * 3 + 2] = d;
+    const v = 0.1 + Math.random() * 0.14;
+    dustCol[i * 3] = v;
+    dustCol[i * 3 + 1] = v;
+    dustCol[i * 3 + 2] = v;
+  }
+  dustGeo.setAttribute("position", new THREE.BufferAttribute(dustPos, 3));
+  dustGeo.setAttribute("color", new THREE.BufferAttribute(dustCol, 3));
+  const dustMaterial = new THREE.PointsMaterial({
+    size: 1.4,
+    transparent: true,
+    opacity: 0.14,
+    vertexColors: true,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+    sizeAttenuation: true,
+  });
+  const dust = new THREE.Points(dustGeo, dustMaterial);
+  starRoot.add(dust);
 
-  const p = particles[i] || {};
-  p.layer = layer;
-  p.x = Math.cos(angle) * radius;
-  p.y = Math.sin(angle) * radius;
-  p.z = randomDepth ? rand(DEPTH_START, DEPTH_END - 40) : DEPTH_START - Math.random() * 420;
-  p.speed = rand(170, 620) * (0.72 + layer * 0.23);
-  p.tail = rand(70, 260) * (0.78 + layer * 0.22);
-  p.width = rand(0.6, 1.4) * (0.8 + layer * 0.18);
-  p.phase = Math.random() * TAU;
-  p.r = color.r;
-  p.g = color.g;
-  p.b = color.b;
-  particles[i] = p;
-}
+  function applyThemeToThree(nextTheme) {
+    themeMode = nextTheme === "light" ? "light" : "dark";
+    const isLight = themeMode === "light";
 
-for (let i = 0; i < PARTICLE_COUNT; i++) resetParticle(i, true);
+    renderer.setClearColor(isLight ? 0xffffff : 0x050012, 1);
+    bgCanvas.style.backgroundColor = isLight ? "#ffffff" : "transparent";
 
-function resizeHyper() {
-  const w = window.innerWidth;
-  const h = window.innerHeight;
-  camera.aspect = w / h;
-  camera.updateProjectionMatrix();
-  renderer.setSize(w, h, false);
-  renderer.setPixelRatio(Math.min(isMobileDevice ? 1.5 : 2.2, window.devicePixelRatio || 1));
-}
-resizeHyper();
-window.addEventListener("resize", resizeHyper);
+    haloMaterial.visible = !isLight;
+    haloMaterial.opacity = isLight ? 0 : 0.24;
+    haloMaterial.blending = isLight ? THREE.NormalBlending : THREE.AdditiveBlending;
 
-const pointer = { x: 0, y: 0, tx: 0, ty: 0 };
-window.addEventListener("pointermove", (e) => {
-  pointer.tx = (e.clientX / window.innerWidth) * 2 - 1;
-  pointer.ty = (e.clientY / window.innerHeight) * 2 - 1;
-}, { passive: true });
+    headMaterial.blending = isLight ? THREE.NormalBlending : THREE.AdditiveBlending;
+    headMaterial.opacity = isLight ? 0.96 : 0.95;
+    headMaterial.size = isLight ? (isMobileDevice ? 2.8 : 3.4) : (isMobileDevice ? 3.8 : 4.8);
+    headMaterial.map = isLight ? crispHeadTexture : glowHeadTexture;
 
-let targetWarp = 0.2;
-let warp = 0.2;
-let prevTime = performance.now();
+    dustMaterial.blending = isLight ? THREE.NormalBlending : THREE.AdditiveBlending;
+    dustMaterial.opacity = isLight ? 0.04 : 0.14;
 
-function updateParticles(dt, t) {
-  const speedBoost = 0.35 + warp * 1.85;
-
-  for (let i = 0; i < PARTICLE_COUNT; i++) {
-    const p = particles[i];
-    p.z += p.speed * speedBoost * dt;
-    if (p.z > DEPTH_END) resetParticle(i, false);
-
-    const zNorm = (p.z - DEPTH_START) / (DEPTH_END - DEPTH_START);
-    const pulse = 0.86 + Math.sin(t * 1.45 + p.phase) * 0.14;
-    const headI = (0.35 + zNorm * 1.08) * pulse;
-    const tailI = 0.03 + zNorm * 0.26;
-
-    const headZ = p.z;
-    const tailZ = p.z - p.tail * (0.75 + zNorm * 1.25);
-
-    const base = i * 6;
-    streakPositions[base] = p.x;
-    streakPositions[base + 1] = p.y;
-    streakPositions[base + 2] = tailZ;
-    streakPositions[base + 3] = p.x;
-    streakPositions[base + 4] = p.y;
-    streakPositions[base + 5] = headZ;
-
-    streakColors[base] = p.r * tailI;
-    streakColors[base + 1] = p.g * tailI;
-    streakColors[base + 2] = p.b * tailI;
-    streakColors[base + 3] = p.r * headI;
-    streakColors[base + 4] = p.g * headI;
-    streakColors[base + 5] = p.b * headI;
-
-    const hb = i * 3;
-    headPositions[hb] = p.x;
-    headPositions[hb + 1] = p.y;
-    headPositions[hb + 2] = headZ;
-    headColors[hb] = Math.min(1, p.r * (0.68 + zNorm * 0.7));
-    headColors[hb + 1] = Math.min(1, p.g * (0.68 + zNorm * 0.7));
-    headColors[hb + 2] = Math.min(1, p.b * (0.68 + zNorm * 0.7));
+    haloMaterial.needsUpdate = true;
+    headMaterial.needsUpdate = true;
+    dustMaterial.needsUpdate = true;
   }
 
-  streakGeometry.attributes.position.needsUpdate = true;
-  streakGeometry.attributes.color.needsUpdate = true;
-  headGeometry.attributes.position.needsUpdate = true;
-  headGeometry.attributes.color.needsUpdate = true;
-}
+  function rand(min, max) {
+    return min + Math.random() * (max - min);
+  }
 
-function renderHyper(now) {
-  const dt = Math.min(0.05, Math.max(0.001, (now - prevTime) / 1000));
-  prevTime = now;
-  const t = now * 0.001;
+  function resetParticle(i, randomDepth = false) {
+    const layer = i % LAYER_COUNT;
+    const isLight = themeMode === "light";
+    const radius = Math.pow(Math.random(), 0.58) * TUNNEL_RADIUS * (0.72 + layer * 0.16);
+    const angle = Math.random() * TAU;
+    const color = pickThreeColor();
 
-  pointer.x += (pointer.tx - pointer.x) * 0.06;
-  pointer.y += (pointer.ty - pointer.y) * 0.06;
+    const p = particles[i] || {};
+    p.layer = layer;
+    p.x = Math.cos(angle) * radius;
+    p.y = Math.sin(angle) * radius;
+    p.z = randomDepth ? rand(DEPTH_START, DEPTH_END - 40) : DEPTH_START - Math.random() * 420;
+    p.speed = isLight
+      ? rand(110, 420) * (0.7 + layer * 0.38)
+      : rand(170, 620) * (0.72 + layer * 0.23);
+    p.tail = isLight
+      ? rand(110, 300) * (0.72 + layer * 0.18)
+      : rand(70, 260) * (0.78 + layer * 0.22);
+    p.width = isLight
+      ? rand(0.45, 1.1) * (0.72 + layer * 0.2)
+      : rand(0.6, 1.4) * (0.8 + layer * 0.18);
+    p.phase = Math.random() * TAU;
+    p.r = color.r;
+    p.g = color.g;
+    p.b = color.b;
+    particles[i] = p;
+  }
 
-  warp += (targetWarp - warp) * 0.045;
-  dust.rotation.z += dt * 0.03 * (0.5 + warp);
+  applyThemeToThree(themeMode);
+  for (let i = 0; i < PARTICLE_COUNT; i++) resetParticle(i, true);
 
-  camera.position.x += ((-pointer.x * 7.5) - camera.position.x) * 0.055;
-  camera.position.y += ((pointer.y * 4.5) - camera.position.y) * 0.055;
-  camera.lookAt(camera.position.x * 0.08, camera.position.y * 0.06, -220);
+  function resizeHyper() {
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+    renderer.setSize(w, h, false);
+    renderer.setPixelRatio(Math.min(isMobileDevice ? 1.5 : 2.2, window.devicePixelRatio || 1));
+  }
+  resizeHyper();
+  window.addEventListener("resize", resizeHyper);
 
-  starRoot.rotation.y += ((pointer.x * 0.12) - starRoot.rotation.y) * 0.035;
-  starRoot.rotation.x += ((-pointer.y * 0.09) - starRoot.rotation.x) * 0.035;
+  const pointer = { x: 0, y: 0, tx: 0, ty: 0 };
+  window.addEventListener("pointermove", (e) => {
+    pointer.tx = (e.clientX / window.innerWidth) * 2 - 1;
+    pointer.ty = (e.clientY / window.innerHeight) * 2 - 1;
+  }, { passive: true });
 
-  updateParticles(dt, t);
-  renderer.render(scene, camera);
+  watchBgTheme(theme => {
+    applyThemeToThree(theme);
+    for (let i = 0; i < PARTICLE_COUNT; i++) {
+      resetParticle(i, true);
+    }
+  });
+
+  let targetWarp = 0.2;
+  let warp = 0.2;
+  let prevTime = performance.now();
+
+  function updateParticles(dt, t) {
+    const isLight = themeMode === "light";
+    const speedBoost = isLight ? (0.42 + warp * 1.6) : (0.35 + warp * 1.85);
+
+    for (let i = 0; i < PARTICLE_COUNT; i++) {
+      const p = particles[i];
+      p.z += p.speed * speedBoost * dt;
+      if (p.z > DEPTH_END) resetParticle(i, false);
+
+      const zNorm = (p.z - DEPTH_START) / (DEPTH_END - DEPTH_START);
+      const pulse = isLight
+        ? (0.98 + Math.sin(t * 0.9 + p.phase) * 0.02)
+        : (0.86 + Math.sin(t * 1.45 + p.phase) * 0.14);
+      const headI = isLight
+        ? (0.62 + zNorm * 0.34) * pulse
+        : (0.35 + zNorm * 1.08) * pulse;
+
+      const headZ = p.z;
+
+      const hb = i * 3;
+      headPositions[hb] = p.x;
+      headPositions[hb + 1] = p.y;
+      headPositions[hb + 2] = headZ;
+      const headScale = isLight ? (0.82 + zNorm * 0.2) : (0.68 + zNorm * 0.7);
+      headColors[hb] = Math.min(1, p.r * headScale);
+      headColors[hb + 1] = Math.min(1, p.g * headScale);
+      headColors[hb + 2] = Math.min(1, p.b * headScale);
+    }
+
+    headGeometry.attributes.position.needsUpdate = true;
+    headGeometry.attributes.color.needsUpdate = true;
+  }
+
+  function renderHyper(now) {
+    const dt = Math.min(0.05, Math.max(0.001, (now - prevTime) / 1000));
+    prevTime = now;
+    const t = now * 0.001;
+
+    pointer.x += (pointer.tx - pointer.x) * 0.06;
+    pointer.y += (pointer.ty - pointer.y) * 0.06;
+
+    warp += (targetWarp - warp) * 0.045;
+    dust.rotation.z += dt * 0.03 * (0.5 + warp);
+
+    const xTarget = -pointer.x * (themeMode === "light" ? 8.6 : 7.5);
+    const yTarget = -pointer.y * (themeMode === "light" ? 5.2 : 4.5);
+    camera.position.x += (xTarget - camera.position.x) * 0.055;
+    camera.position.y += (yTarget - camera.position.y) * 0.055;
+    camera.lookAt(camera.position.x * 0.08, camera.position.y * 0.06, -220);
+
+    starRoot.rotation.y += ((pointer.x * 0.12) - starRoot.rotation.y) * 0.035;
+    starRoot.rotation.x += ((-pointer.y * 0.09) - starRoot.rotation.x) * 0.035;
+
+    updateParticles(dt, t);
+    renderer.render(scene, camera);
+    requestAnimationFrame(renderHyper);
+  }
+
   requestAnimationFrame(renderHyper);
-}
 
-requestAnimationFrame(renderHyper);
-
-// Реакция на текущую фазу процесса: ускоряем "прыжок" во время поиска/анализа.
-socket.on("state", data => {
-  const phase = data?.phase || "idle";
-  const active = (
-    phase === "searching" ||
-    phase === "analyzing" ||
-    phase === "rechecking" ||
-    phase === "rechecking_screenshots" ||
-    phase === "rechecking_analysis"
-  );
-  targetWarp = active ? 1.0 : 0.2;
-});
+  // Реакция на текущую фазу процесса: ускоряем "прыжок" во время поиска/анализа.
+  socket.on("state", data => {
+    const phase = data?.phase || "idle";
+    const active = (
+      phase === "searching" ||
+      phase === "analyzing" ||
+      phase === "rechecking" ||
+      phase === "rechecking_screenshots" ||
+      phase === "rechecking_analysis"
+    );
+    targetWarp = active ? 1.0 : 0.2;
+  });
 }
 
 setLanguage(currentLang);
