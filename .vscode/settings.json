@@ -1,0 +1,8 @@
+﻿{
+  "python.defaultInterpreterPath": "${env:LOCALAPPDATA}\\Programs\\Python\\Python311\\python.exe",
+  "python.analysis.typeCheckingMode": "basic",
+  "workbench.colorTheme": "Default Dark+",
+  "files.associations": {
+    "*.py": "python"
+  }
+}

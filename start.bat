@@ -1,110 +1,124 @@
 @echo off
+setlocal EnableExtensions
 chcp 65001 >nul
-title TISH SEARCH v4 - Multi-Agent Site Analyzer
+title TISH SEARCH v4 - Auto Startup
 cls
 
-echo ╔══════════════════════════════════════════════════════════╗
-echo ║                                                          ║
-echo ║           TISH SEARCH v4 - Auto-Startup                  ║
-echo ║                                                          ║
-echo ║     Профессиональный инструмент для анализа сайтов       ║
-echo ║                                                          ║
-echo ╚══════════════════════════════════════════════════════════╝
+echo ============================================================
+echo   TISH SEARCH v4 - Auto Startup
+echo ============================================================
 echo.
 
-REM Проверяем наличие Python
+REM 1) Python
 python --version >nul 2>&1
 if errorlevel 1 (
-    echo ❌ Python не найден! Установите Python 3.9+
-    echo Скачайте с: https://www.python.org/downloads/
+    echo [ERROR] Python is not installed.
+    echo Install Python 3.11+ from: https://www.python.org/downloads/
     pause
     exit /b 1
 )
 
-echo ✅ Python найден
+echo [OK] Python:
 python --version
 echo.
 
-REM Проверяем наличие зависимостей
-echo 📦 Проверка зависимостей...
-python -c "import flask" >nul 2>&1
+REM 2) pip
+python -m pip --version >nul 2>&1
 if errorlevel 1 (
-    echo ⚠️ Зависимости не установлены. Устанавливаю...
-    pip install -r requirements.txt
-    if errorlevel 1 (
-        echo ❌ Ошибка установки зависимостей!
-        pause
-        exit /b 1
-    )
-) else (
-    echo ✅ Зависимости установлены
+    echo [INFO] pip is missing. Installing via ensurepip...
+    python -m ensurepip --upgrade >nul 2>&1
 )
-echo.
 
-REM Проверяем Ollama
-echo 🔍 Проверка Ollama...
-where ollama >nul 2>&1
+REM 3) Install project dependencies (idempotent)
+echo [INFO] Installing dependencies from requirements.txt...
+python -m pip install -r requirements.txt
 if errorlevel 1 (
-    echo ❌ Ollama не найдена! Установите Ollama
-    echo Скачайте с: https://ollama.ai
+    echo [ERROR] Failed to install dependencies.
     pause
     exit /b 1
 )
-
-echo ✅ Ollama найдена
+echo [OK] Python dependencies are ready.
 echo.
 
-REM Проверяем, запущена ли Ollama
-echo 🔄 Проверка сервера Ollama...
-curl -s http://localhost:11434/api/tags >nul 2>&1
+REM 4) Playwright browser
+echo [INFO] Checking Playwright Chromium...
+python -c "from playwright.sync_api import sync_playwright; p=sync_playwright().start(); b=p.chromium.launch(headless=True); b.close(); p.stop()" >nul 2>&1
 if errorlevel 1 (
-    echo ⚠️ Сервер Ollama не запущен. Запускаю...
-    start "" "ollama" "ollama" "serve"
+    echo [INFO] Installing Playwright Chromium...
+    python -m playwright install chromium
+    if errorlevel 1 (
+        echo [ERROR] Failed to install Playwright Chromium.
+        pause
+        exit /b 1
+    )
+)
+echo [OK] Playwright is ready.
+echo.
+
+REM 5) Ollama binary
+echo [INFO] Checking Ollama...
+where ollama >nul 2>&1
+if errorlevel 1 (
+    echo [INFO] Ollama is not installed. Trying auto-install via winget...
+    winget --version >nul 2>&1
+    if errorlevel 1 (
+        echo [ERROR] winget is not available. Install Ollama manually: https://ollama.ai
+        pause
+        exit /b 1
+    )
+
+    winget install -e --id Ollama.Ollama --accept-package-agreements --accept-source-agreements
+    if errorlevel 1 (
+        echo [ERROR] Failed to auto-install Ollama.
+        echo Install manually: https://ollama.ai
+        pause
+        exit /b 1
+    )
+)
+echo [OK] Ollama found.
+echo.
+
+REM 6) Ollama server
+echo [INFO] Checking Ollama server...
+python -c "import requests,sys; sys.exit(0 if requests.get('http://localhost:11434/api/tags',timeout=5).status_code==200 else 1)" >nul 2>&1
+if errorlevel 1 (
+    echo [INFO] Ollama server is not running. Starting...
+    start "" ollama serve
     timeout /t 5 /nobreak >nul
 ) else (
-    echo ✅ Сервер Ollama работает
+    echo [OK] Ollama server is running.
 )
 echo.
 
-REM Проверяем наличие vision-модели
-echo 🤖 Проверка vision-модели...
-python -c "import requests; r = requests.get('http://localhost:11434/api/tags'); models = r.json().get('models', []); vision = [m for m in models if 'qwen' in m['name'] or 'llava' in m['name']]; exit(0 if vision else 1)" >nul 2>&1
+REM 7) Vision model (qwen3-vl or llava)
+echo [INFO] Checking vision model...
+python -c "import requests,sys; r=requests.get('http://localhost:11434/api/tags',timeout=10); models=r.json().get('models', []); vision=[m for m in models if 'qwen' in m.get('name','') or 'llava' in m.get('name','')]; sys.exit(0 if vision else 1)" >nul 2>&1
 if errorlevel 1 (
-    echo ⚠️ Vision-модель не найдена! Устанавливаю qwen3-vl...
-    echo Это может занять несколько минут...
+    echo [INFO] Vision model not found. Pulling qwen3-vl...
     ollama pull qwen3-vl
     if errorlevel 1 (
-        echo ❌ Ошибка установки модели!
+        echo [ERROR] Failed to pull vision model.
         pause
         exit /b 1
     )
 ) else (
-    echo ✅ Vision-модель найдена
+    echo [OK] Vision model found.
 )
 echo.
 
-REM Инициализация БД
-echo 💾 Инициализация базы данных...
-python init_app.py
+REM 8) Initialize app resources (DB/folders/checks)
+echo [INFO] Running app initialization...
+python -m modules.system.python.init_app
 if errorlevel 1 (
-    echo ⚠️ Предупреждение при инициализации (не критично)
+    echo [WARN] Initialization returned warnings. Continuing...
 )
 echo.
 
-echo ╔══════════════════════════════════════════════════════════╗
-echo ║                                                          ║
-echo ║           🚀 ЗАПУСК TISH SEARCH v4...                    ║
-echo ║                                                          ║
-echo ╚══════════════════════════════════════════════════════════╝
-echo.
-echo 📡 Сервер будет доступен по адресу: http://localhost:5000
-echo.
-echo 💡 Для остановки нажмите Ctrl+C в этом окне
-echo.
-echo ──────────────────────────────────────────────────────────
+echo ============================================================
+echo   Starting server: http://localhost:5000
+echo   Press Ctrl+C to stop
+echo ============================================================
 echo.
 
-REM Запускаем сервер
-python server.py
-
+python -m modules.main.python.server
 pause

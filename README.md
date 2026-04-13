@@ -58,7 +58,7 @@ ollama pull llava
 
 ### 3. Инициализация приложения
 ```bash
-python init_app.py
+python -m modules.system.python.init_app
 ```
 
 ### 4. Настройка окружения
@@ -81,7 +81,7 @@ VISION_MODEL=qwen3-vl:latest
 
 ### 5. Запуск сервера
 ```bash
-python server.py
+python -m modules.main.python.server
 ```
 
 Откройте браузер: **http://localhost:5000**
@@ -191,7 +191,7 @@ python server.py
 
 ### Конфигурационные файлы:
 - `.env` — основные настройки
-- `config.py` — конфигурация приложения
+- `modules/common/python/config.py` — конфигурация приложения
 - `requirements.txt` — зависимости
 
 ## 🐛 Troubleshooting
@@ -219,7 +219,7 @@ playwright install chromium
 
 ### Ошибка: "Port 5000 уже используется"
 ```bash
-# Измените порт в server.py
+# Измените порт в modules/main/python/server.py
 socketio.run(app, host="0.0.0.0", port=5001, debug=False)
 ```
 

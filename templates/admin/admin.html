@@ -1,0 +1,210 @@
+﻿<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Admin Panel — TISH SEARCH</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Unbounded:wght@300;400;700;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/admin/css/admin.css">
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>🛡️ Admin Panel</h1>
+      <p>Мониторинг и управление системой</p>
+    </div>
+    <div class="admin-badge">👑 ADMIN: {{ current_user.username }}</div>
+    <a href="/" class="btn-back">← На главную</a>
+  </header>
+
+  <!-- GLOBAL STATS -->
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-label">Пользователей онлайн</div>
+      <div class="stat-value" id="stat-online">{{ online_count }}</div>
+      <div class="stat-sub">из {{ total_users }} всего</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Активных задач</div>
+      <div class="stat-value" id="stat-tasks">{{ active_tasks }}</div>
+      <div class="stat-sub">анализов сейчас</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Нагрузка CPU</div>
+      <div class="stat-value" id="stat-cpu">{{ cpu_percent }}%</div>
+      <div class="stat-sub">{{ cpu_cores }} ядер</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Использование RAM</div>
+      <div class="stat-value" id="stat-ram">{{ ram_used }} MB</div>
+      <div class="stat-sub">из {{ ram_total }} MB</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Запросов/час</div>
+      <div class="stat-value" id="stat-requests">{{ requests_per_hour }}</div>
+      <div class="stat-sub">текущий час</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Сайтов в БД</div>
+      <div class="stat-value" id="stat-db">{{ db_sites }}</div>
+      <div class="stat-sub">{{ db_cities }} городов</div>
+    </div>
+  </div>
+
+  <!-- ONLINE USERS -->
+  <div class="panel">
+    <div class="panel-header">
+      👥 Пользователи онлайн <span style="margin-left:auto;color:var(--text3);font-size:10px">Обновляется каждые 10с</span>
+    </div>
+    <div class="panel-body">
+      <div class="online-grid" id="online-users">
+        {% for user in online_users %}
+        <div class="online-card">
+          <div class="online-card-header">
+            <div class="online-dot"></div>
+            <div>
+              <div class="online-username">
+                {{ user.username }}
+                {% if user.subscription_plan == 'enterprise' %}
+                <span class="online-badge badge-enterprise">Enterprise</span>
+                {% elif user.subscription_plan == 'pro' %}
+                <span class="online-badge badge-pro">Pro</span>
+                {% else %}
+                <span class="online-badge badge-basic">Basic</span>
+                {% endif %}
+              </div>
+              <div class="online-id">ID: {{ user.main_site_id or user.id }} • Приоритет: {{ user.priority or 1 }}</div>
+            </div>
+          </div>
+          <div class="online-details">
+            <div>📧 {{ user.email }}</div>
+            <div>🕐 Вошёл: {{ user.last_login[:16] if user.last_login else 'N/A' }}</div>
+            <div>📊 Городов сегодня: {{ user.cities_today or 0 }}/{{ user.max_cities or '∞' }}</div>
+            {% if user.current_task %}
+            <div style="color:var(--cyan);margin-top:6px">⚡ Выполняет: {{ user.current_task }}</div>
+            {% else %}
+            <div style="color:var(--text3);margin-top:6px">⏸️ Ожидает</div>
+            {% endif %}
+          </div>
+        </div>
+        {% else %}
+        <div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--text3)">
+          Нет пользователей онлайн
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <!-- SYSTEM LOAD -->
+  <div class="panel">
+    <div class="panel-header">📈 Нагрузка системы</div>
+    <div class="panel-body">
+      <div class="load-grid">
+        <div class="load-card">
+          <h4>🔥 CPU Usage</h4>
+          <div class="load-bar">
+            <div class="load-bar-fill {% if cpu_percent < 50 %}low{% elif cpu_percent < 80 %}medium{% else %}high{% endif %}" style="width:{{ cpu_percent }}%"></div>
+          </div>
+          <div class="load-stats">
+            <span>{{ cpu_percent }}%</span>
+            <span>{{ cpu_cores }} cores</span>
+          </div>
+        </div>
+        <div class="load-card">
+          <h4>💾 RAM Usage</h4>
+          <div class="load-bar">
+            <div class="load-bar-fill {% if ram_percent < 50 %}low{% elif ram_percent < 80 %}medium{% else %}high{% endif %}" style="width:{{ ram_percent }}%"></div>
+          </div>
+          <div class="load-stats">
+            <span>{{ ram_used }} MB / {{ ram_total }} MB</span>
+            <span>{{ ram_percent }}%</span>
+          </div>
+        </div>
+        <div class="load-card">
+          <h4>🌐 Активных WebSocket</h4>
+          <div class="load-bar">
+            <div class="load-bar-fill {% if ws_connections < 10 %}low{% elif ws_connections < 20 %}medium{% else %}high{% endif %}" style="width:{{ ws_percent }}%"></div>
+          </div>
+          <div class="load-stats">
+            <span>{{ ws_connections }} подключений</span>
+            <span>{{ ws_percent }}%</span>
+          </div>
+        </div>
+        <div class="load-card">
+          <h4>💽 Database Size</h4>
+          <div class="load-bar">
+            <div class="load-bar-fill low" style="width:{{ db_size_percent }}%"></div>
+          </div>
+          <div class="load-stats">
+            <span>{{ db_size_mb }} MB</span>
+            <span>{{ db_sites }} записей</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ALL USERS -->
+  <div class="panel">
+    <div class="panel-header">👤 Все пользователи</div>
+    <div class="panel-body" style="overflow-x:auto">
+      <table class="users-table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Username</th>
+            <th>Email</th>
+            <th>План</th>
+            <th>Приоритет</th>
+            <th>Статус</th>
+            <th>Последний вход</th>
+            <th>Действия</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for user in all_users %}
+          <tr>
+            <td>{{ user.main_site_id or user.id }}</td>
+            <td>{{ user.username }}</td>
+            <td>{{ user.email }}</td>
+            <td>
+              {% if user.subscription_plan == 'enterprise' %}
+              <span class="online-badge badge-enterprise">Enterprise</span>
+              {% elif user.subscription_plan == 'pro' %}
+              <span class="online-badge badge-pro">Pro</span>
+              {% else %}
+              <span class="online-badge badge-basic">Basic</span>
+              {% endif %}
+            </td>
+            <td>{{ user.priority or 1 }}/4</td>
+            <td>
+              {% if user.is_online %}
+              <span class="user-status status-active">🟢 Онлайн</span>
+              {% elif user.current_task %}
+              <span class="user-status status-queue">⚡ В очереди</span>
+              {% else %}
+              <span class="user-status status-inactive">⚫ Оффлайн</span>
+              {% endif %}
+            </td>
+            <td>{{ user.last_login[:16] if user.last_login else 'Никогда' }}</td>
+            <td>
+              <button class="action-btn" onclick="viewUser({{ user.id }})">👁️ Просмотр</button>
+              <button class="action-btn" onclick="setPriority({{ user.id }})">⬆️ Приоритет</button>
+              <button class="action-btn danger" onclick="banUser({{ user.id }})">🚫 Бан</button>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<button class="refresh-btn" onclick="location.reload()">🔄 Обновить</button>
+
+<script src="/static/admin/js/admin.js"></script>
+</body>
+</html>
+

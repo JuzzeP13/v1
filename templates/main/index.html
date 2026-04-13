@@ -1,0 +1,466 @@
+﻿<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>TISH SEARCH v4</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Unbounded:wght@300;400;700;900&display=swap" rel="stylesheet">
+<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.min.js" onerror="this.onerror=null;this.src='https://cdnjs.cloudflare.com/ajax/libs/three.js/r158/three.min.js';"></script>
+<link rel="stylesheet" href="/static/themes.css">
+<link rel="stylesheet" href="/static/main/css/index.css">
+</head>
+<body>
+<canvas id="starfield"></canvas>
+<div class="orb o1"></div><div class="orb o2"></div>
+<div class="wrap">
+
+<!-- HEADER -->
+<header>
+  <div class="logo">
+    <div class="logo-mark" style="display:flex;align-items:center;justify-content:center">
+      <svg width="42" height="42" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style="filter:drop-shadow(0 0 16px rgba(217,70,239,.6))">
+        <!-- Фон -->
+        <rect width="100" height="100" fill="url(#bgGrad)" rx="12"/>
+        
+        <!-- Большая T лассо стиль -->
+        <path d="M 25 20 Q 40 15 50 15 Q 60 15 75 20 L 75 35 Q 75 32 70 30 L 30 30 Q 25 32 25 35 Z" fill="url(#tGrad)" stroke="#00d4ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        
+        <!-- Нижняя линия T -->
+        <path d="M 40 35 L 40 75 Q 40 80 45 82 Q 50 84 55 82 Q 60 80 60 75 L 60 35" fill="none" stroke="url(#tGrad)" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+        
+        <!-- Маленький плюсик справа -->
+        <g transform="translate(75, 70)">
+          <circle cx="0" cy="0" r="6" fill="rgba(255,255,255,.7)"/>
+          <line x1="-3" y1="0" x2="3" y2="0" stroke="rgba(217,70,239,.9)" stroke-width="1.5" stroke-linecap="round"/>
+          <line x1="0" y1="-3" x2="0" y2="3" stroke="rgba(217,70,239,.9)" stroke-width="1.5" stroke-linecap="round"/>
+        </g>
+        
+        <defs>
+          <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" style="stop-color:#3d1a66;stop-opacity:1" />
+            <stop offset="100%" style="stop-color:#1a0d3d;stop-opacity:1" />
+          </linearGradient>
+          <linearGradient id="tGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" style="stop-color:#00d4ff;stop-opacity:1" />
+            <stop offset="100%" style="stop-color:#d946ef;stop-opacity:1" />
+          </linearGradient>
+        </defs>
+      </svg>
+    </div>
+    <div><h1>TISH SEARCH</h1><p data-i18n="index.app_subtitle">Multi-Agent Site Analyzer v4</p></div>
+  </div>
+  <div class="hdr-right">
+    <div style="display:flex;align-items:center;gap:6px;padding:4px;border:1px solid var(--bdr);border-radius:999px;background:rgba(20,6,38,.7)">
+      <button class="btn" id="lang-ru" onclick="setLanguage('ru')" style="padding:5px 10px;font-size:10px;background:rgba(0,212,255,.14);color:var(--cyan)">RU</button>
+      <button class="btn" id="lang-en" onclick="setLanguage('en')" style="padding:5px 10px;font-size:10px;background:transparent;color:var(--text2)">EN</button>
+    </div>
+    <div id="subscription-badge" style="padding:4px 10px;border-radius:999px;font-size:10px;font-weight:700;background:rgba(0,255,136,.12);color:var(--green);border:1px solid rgba(0,255,136,.3);display:none">
+      BASIC
+    </div>
+    <div class="conn-info"><div class="dot" id="cdot"></div><span id="clabel" data-i18n="index.connecting">Подкл...</span></div>
+    <span class="phase idle" id="pbadge" data-phase="idle" data-stopped="false" data-i18n="index.waiting">Ожидание</span>
+    <a href="/auth/login" class="btn" id="login-link" data-i18n="auth.login" style="background:transparent;border:1px solid var(--bdr);color:var(--text2);padding:6px 14px;font-size:11px;text-decoration:none;margin-left:8px">Вход</a>
+    <a href="/auth/register" class="btn" id="register-link" data-i18n="auth.register" style="background:linear-gradient(135deg,#d946ef,#f472b6);color:#0a0015;padding:6px 14px;font-size:11px;text-decoration:none">Регистрация</a>
+    <a href="/subscription" class="btn" id="subscription-link" style="background:rgba(124,58,237,.15);color:#a78bfa;border:1px solid rgba(124,58,237,.4);padding:6px 14px;font-size:11px;text-decoration:none;display:none">💎 Подписка</a>
+    <button onclick="logoutUser()" class="btn" id="logout-btn" style="background:rgba(255,68,85,.1);color:var(--red);border:1px solid rgba(255,68,85,.3);padding:6px 14px;font-size:11px;display:none">Выход</button>
+  </div>
+</header>
+
+<div class="layout">
+
+<!-- ── SIDEBAR ── -->
+<div class="sidebar">
+
+  <!-- ТИП ПОИСКА -->
+  <div class="panel">
+    <div class="phead" data-i18n="index.search_type">🔍 Тип поиска</div>
+    <div class="pbody" style="padding:10px">
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px">
+          <input type="radio" name="search-type" value="sites" checked onchange="toggleSearchType()" style="accent-color:var(--cyan)">
+          <span id="search-type-sites" data-i18n="index.websites">🌐 Сайты</span>
+        </label>
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px">
+          <input type="radio" name="search-type" value="social" onchange="toggleSearchType()" style="accent-color:var(--cyan)">
+          <span id="search-type-social" data-i18n="index.social_media">📱 Соцсети</span>
+        </label>
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px">
+          <input type="radio" name="search-type" value="products" onchange="toggleSearchType()" style="accent-color:var(--cyan)">
+          <span id="search-type-products" data-i18n="index.products_services">🛍️ Товары/Услуги</span>
+        </label>
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px">
+          <input type="radio" name="search-type" value="youtube-trends" onchange="toggleSearchType()" style="accent-color:var(--cyan)">
+          <span id="search-type-youtube-trends">🎬 YouTube Тренды</span>
+        </label>
+      </div>
+    </div>
+  </div>
+
+  <!-- ОЧЕРЕДЬ ГОРОДОВ (для сайтов) -->
+  <div class="panel" id="city-queue-panel">
+    <div class="phead"><div class="blink" id="qblink"></div><span data-i18n="index.city_queue">Очередь городов</span></div>
+    <div class="pbody">
+      <div class="city-input-row">
+        <input id="city-input" type="text" data-i18n-placeholder="index.city_placeholder" placeholder="Название города...">
+        <button class="btn btn-add" onclick="addCity()" title="Добавить / Add">+</button>
+      </div>
+      <div class="queue-list" id="queue-list">
+        <div class="queue-empty" data-i18n="index.queue_empty">Добавьте города для анализа</div>
+      </div>
+      <div style="margin-top:12px;display:flex;flex-direction:column;gap:8px">
+        <button class="btn btn-start" id="btn-start" onclick="startQueue()" data-i18n="index.start_queue">▶ Запустить очередь</button>
+        <button class="btn btn-stop" id="btn-stop" onclick="stopScan()" data-i18n="index.stop">⛔ Остановить</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ПОИСК ПО СОЦСЕТЯМ -->
+  <div class="panel" id="social-search-panel" style="display:none">
+    <div class="phead"><div class="blink" id="sblink"></div><span data-i18n="index.social_search">Поиск по соцсетям</span></div>
+    <div class="pbody">
+      <div style="margin-bottom:12px">
+        <label style="color:var(--text2);font-size:11px;display:block;margin-bottom:4px" data-i18n="index.search_query">Поисковый запрос</label>
+        <input id="social-query" type="text" data-i18n-placeholder="index.search_query_placeholder" placeholder="Например: IT компании, рестораны..." class="setting-input wide" style="width:100%">
+      </div>
+      <div style="margin-bottom:12px">
+        <label style="color:var(--text2);font-size:11px;display:block;margin-bottom:4px" data-i18n="index.city_optional">Город (опционально)</label>
+        <input id="social-city" type="text" data-i18n-placeholder="index.city_placeholder_small" placeholder="Москва, СПб..." class="setting-input wide" style="width:100%">
+      </div>
+      <div style="margin-bottom:12px">
+        <label style="color:var(--text2);font-size:11px;display:block;margin-bottom:4px" data-i18n="index.platforms">Платформы</label>
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px">
+            <input type="checkbox" name="platform" value="youtube" checked style="accent-color:#ff0000">
+            <span>▶ YouTube</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px">
+            <input type="checkbox" name="platform" value="instagram" checked style="accent-color:#e4405f">
+            <span>📷 Instagram</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px">
+            <input type="checkbox" name="platform" value="twitter" checked style="accent-color:#1da1f2">
+            <span>𝕏 X (Twitter)</span>
+          </label>
+        </div>
+      </div>
+      <div style="margin-bottom:12px">
+        <label style="color:var(--text2);font-size:11px;display:block;margin-bottom:4px">📊 Максимум результатов (на платформу)</label>
+        <input id="social-max" type="number" min="5" max="100" value="10" class="setting-input" style="width:100%">
+      </div>
+      <div style="margin-top:12px;display:flex;flex-direction:column;gap:8px">
+        <button class="btn btn-start" id="btn-social-search" onclick="startSocialSearch()" data-i18n="index.start_search">▶ Начать поиск</button>
+        <button class="btn btn-stop" id="btn-social-stop" onclick="stopSocialSearch()" data-i18n="index.stop_search">⛔ Остановить</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ПОИСК ТОВАРОВ/УСЛУГ -->
+  <div class="panel" id="products-search-panel" style="display:none">
+    <div class="phead"><div class="blink" id="pblink"></div><span data-i18n="index.product_search">Поиск товаров/услуг</span></div>
+    <div class="pbody">
+      <div style="margin-bottom:12px">
+        <label style="color:var(--text2);font-size:11px;display:block;margin-bottom:4px" data-i18n="index.what_search">🔍 Что ищем?</label>
+        <input id="product-query" type="text" data-i18n-placeholder="index.what_search_placeholder" placeholder="Например: кроссовки, ремонт квартир, доставка еды..." class="setting-input wide" style="width:100%">
+        <div style="font-size:10px;color:var(--text3);margin-top:4px" data-i18n="index.synonyms_hint">Система учитывает синонимы и формы слов: кеды=кроссовки=тапки=обувь, телефон=смартфон=мобила, куртка=ветровка=верхняя одежда</div>
+      </div>
+      <div style="margin-bottom:12px">
+        <label style="color:var(--text2);font-size:11px;display:block;margin-bottom:4px" data-i18n="index.city_region">📍 Город/Регион</label>
+        <input id="product-city" type="text" data-i18n-placeholder="index.city_region_placeholder" placeholder="Москва, СПб, Россия..." class="setting-input wide" style="width:100%">
+      </div>
+      <div style="margin-bottom:12px">
+        <label style="color:var(--text2);font-size:11px;display:block;margin-bottom:4px" data-i18n="index.max_results">📊 Максимум результатов</label>
+        <input id="product-max" type="number" min="5" max="100" value="20" class="setting-input" style="width:100%">
+      </div>
+      <div style="margin-top:12px;display:flex;flex-direction:column;gap:8px">
+        <button class="btn btn-start" id="btn-product-search" onclick="startProductSearch()" data-i18n="index.start_search">▶ Начать поиск</button>
+        <button class="btn btn-stop" id="btn-product-stop" onclick="stopProductSearch()" data-i18n="index.stop_search">⛔ Остановить</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- YOUTUBE ТРЕНДЫ (TubelQ-style) -->
+  <div class="panel" id="youtube-trends-panel" style="display:none">
+    <div class="phead"><div class="blink" id="ytblink"></div><span>🎬 YouTube Тренды (TubelQ)</span></div>
+    <div class="pbody">
+      <div style="margin-bottom:12px">
+        <label style="color:var(--text2);font-size:11px;display:block;margin-bottom:4px">🔍 Поисковый запрос</label>
+        <input id="yt-query" type="text" placeholder="Например: irl challenges, pranks, gaming..." class="setting-input wide" style="width:100%">
+      </div>
+      <div style="margin-bottom:12px">
+        <label style="color:var(--text2);font-size:11px;display:block;margin-bottom:4px">📊 Максимум результатов</label>
+        <input id="yt-max" type="number" min="10" max="200" value="50" class="setting-input" style="width:100%">
+      </div>
+      <div style="margin-bottom:12px">
+        <label style="color:var(--text2);font-size:11px;display:block;margin-bottom:4px">⚡ Параллельных запросов</label>
+        <input id="yt-parallel" type="number" min="2" max="24" value="12" class="setting-input" style="width:100%">
+      </div>
+      <div style="margin-bottom:12px">
+        <label style="color:var(--text2);font-size:11px;display:block;margin-bottom:6px">⏱️ Фильтр по длительности (минуты)</label>
+        <div style="display:flex;gap:8px">
+          <input id="yt-duration-min" type="number" min="0" max="60" value="4" class="setting-input" style="width:50%" placeholder="Мин">
+          <input id="yt-duration-max" type="number" min="0" max="120" value="25" class="setting-input" style="width:50%" placeholder="Макс">
+        </div>
+      </div>
+      <div style="margin-bottom:12px">
+        <label style="color:var(--text2);font-size:11px;display:block;margin-bottom:6px">👥 Подписчики канала</label>
+        <div style="display:flex;gap:8px">
+          <input id="yt-subs-min" type="number" min="0" step="1000" value="0" class="setting-input" style="width:50%" placeholder="От">
+          <input id="yt-subs-max" type="number" min="0" step="1000" value="10000000" class="setting-input" style="width:50%" placeholder="До">
+        </div>
+      </div>
+      <div style="margin-bottom:12px">
+        <label style="color:var(--text2);font-size:11px;display:block;margin-bottom:4px">🏷️ Тег (опционально)</label>
+        <input id="yt-tag" type="text" placeholder="challenge, prank, gaming..." class="setting-input wide" style="width:100%">
+      </div>
+      <div style="margin-bottom:12px">
+        <label style="color:var(--text2);font-size:11px;display:block;margin-bottom:4px">🌐 Язык поиска</label>
+        <div style="display:flex;gap:8px">
+          <button class="btn" id="yt-lang-ru" onclick="setYtLang('RU')" style="flex:1;padding:8px;font-size:11px;background:rgba(0,212,255,.14);color:var(--cyan)">RU</button>
+          <button class="btn" id="yt-lang-en" onclick="setYtLang('EN')" style="flex:1;padding:8px;font-size:11px;background:transparent;color:var(--text2)">EN</button>
+        </div>
+      </div>
+      <div style="margin-top:12px;display:flex;flex-direction:column;gap:8px">
+        <button class="btn btn-start" id="btn-yt-search" onclick="startYoutubeTrends()">🎬 Начать поиск трендов</button>
+        <button class="btn btn-stop" id="btn-yt-stop" onclick="stopYoutubeTrends()">⛔ Остановить</button>
+      </div>
+      
+      <!-- ФИЛЬТР КАЧЕСТВА ПРЕВЬЮ -->
+      <div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--bdr)">
+        <label style="color:var(--text2);font-size:10px;display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:1px">📥 Фильтр для Excel</label>
+        <div style="display:flex;gap:6px;margin-bottom:8px">
+          <button class="btn" id="yt-filter-all" onclick="setYtExcelFilter(null)" style="flex:1;padding:8px;font-size:10px;background:rgba(0,212,255,.14);color:var(--cyan)">📋 Все</button>
+          <button class="btn" id="yt-filter-good" onclick="setYtExcelFilter('good')" style="flex:1;padding:8px;font-size:10px;background:transparent;color:var(--text2)">✅ Хорошие</button>
+          <button class="btn" id="yt-filter-bad" onclick="setYtExcelFilter('bad')" style="flex:1;padding:8px;font-size:10px;background:transparent;color:var(--text2)">❌ Плохие</button>
+        </div>
+        <button class="btn" onclick="saveYoutubeToExcel()" style="width:100%;padding:10px;font-size:11px;background:linear-gradient(135deg,#ff0000,#cc0000);color:#fff">💾 Сохранить в Excel и скачать</button>
+        <div style="font-size:9px;color:var(--text3);margin-top:4px;text-align:center">
+          Хорошие = высокое качество + низкий кликбейт<br>
+          Плохие = низкое качество ИЛИ высокий кликбейт
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SETTINGS -->
+  <div class="panel">
+    <div class="phead" data-i18n="index.analysis_settings">⚙ Настройки анализа</div>
+    <div class="pbody">
+      <div class="setting-row">
+        <span class="setting-label" data-i18n="index.large_sites">Крупных сайтов</span>
+        <input class="setting-input" id="s-max-large" type="number" min="5" max="100" value="30">
+      </div>
+      <div class="setting-row">
+        <span class="setting-label" data-i18n="index.niche_sites">Нишевых сайтов</span>
+        <input class="setting-input" id="s-max-niche" type="number" min="5" max="100" value="30">
+      </div>
+      <div class="setting-row">
+        <span class="setting-label" data-i18n="index.urls_per_query">URL за запрос</span>
+        <input class="setting-input" id="s-per-query" type="number" min="1" max="10" value="3">
+      </div>
+      <div class="setting-row">
+        <span class="setting-label" data-i18n="index.parallel_screenshots">Параллельных скриншотов</span>
+        <input class="setting-input" id="s-parallel" type="number" min="1" max="10" value="8">
+      </div>
+      <div class="setting-row">
+        <span class="setting-label" data-i18n="index.page_timeout_ms">Таймаут страницы (мс)</span>
+        <input class="setting-input" id="s-timeout" type="number" min="5000" max="30000" step="1000" value="8000">
+      </div>
+      <div class="setting-row">
+        <span class="setting-label" data-i18n="index.ollama_model">Модель Ollama</span>
+        <select class="setting-input wide" id="s-model" style="padding:6px 8px">
+          <option value="" data-i18n="index.loading_models">Загрузка моделей...</option>
+        </select>
+      </div>
+      <button class="btn-save-settings" onclick="saveSettings()" data-i18n="index.save_settings">💾 Сохранить настройки</button>
+      <div style="margin-top:8px;font-size:10px;color:var(--text3)">
+        <span data-i18n="index.total_sites_hint">Итого сайтов на город:</span> <span id="s-total-hint" style="color:var(--cyan)">60</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- КРИТЕРИИ ОЦЕНИВАНИЯ -->
+  <div class="panel">
+    <div class="phead" data-i18n="index.criteria">📋 Критерии оценивания</div>
+    <div class="pbody" style="font-size:9px;color:var(--text2);line-height:1.6">
+      <div style="margin-bottom:10px">
+        <div style="color:#00d4ff;font-weight:700;margin-bottom:5px" data-i18n="index.design_criteria">🎨 ДИЗАЙН (0-10)</div>
+        <div style="background:var(--bg2);padding:6px;border-radius:4px;color:var(--text3)">
+          <span data-i18n="index.design_pros"><strong>+</strong> Типография четкая<br>
+          <strong>+</strong> Цвета гармоничны<br>
+          <strong>+</strong> Иерархия явная<br></span>
+          <span data-i18n="index.design_cons"><strong>-</strong> Плохой контраст<br>
+          <strong>-</strong> Устаревший стиль</span>
+        </div>
+      </div>
+      <div>
+        <div style="color:#d946ef;font-weight:700;margin-bottom:5px" data-i18n="index.ux_criteria">👤 UX (0-10)</div>
+        <div style="background:var(--bg2);padding:6px;border-radius:4px;color:var(--text3)">
+          <span data-i18n="index.ux_pros"><strong>+</strong> Меню ясное<br>
+          <strong>+</strong> Текст читаем<br>
+          <strong>+</strong> Кнопки заметны<br></span>
+          <span data-i18n="index.ux_cons"><strong>-</strong> Сложная навигация<br>
+          <strong>-</strong> Медленная загрузка</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="panel">
+    <div class="phead" data-i18n="index.examples">📚 Примеры для обучения</div>
+    <div class="pbody" style="font-size:10px;color:var(--text2)">
+      <div style="margin-bottom:10px">
+        <div style="color:var(--cyan);margin-bottom:4px;font-weight:700" data-i18n="index.good_examples">👍 Хорошие примеры</div>
+        <div id="examples-good" style="padding:8px;background:var(--bg2);border-radius:6px;min-height:40px">
+          <div style="color:var(--text3)" data-i18n="index.no_examples">Нет примеров</div>
+        </div>
+      </div>
+      <div>
+        <div style="color:var(--red);margin-bottom:4px;font-weight:700" data-i18n="index.bad_examples">👎 Плохие примеры</div>
+        <div id="examples-bad" style="padding:8px;background:var(--bg2);border-radius:6px;min-height:40px">
+          <div style="color:var(--text3)" data-i18n="index.no_examples">Нет примеров</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ДОБАВИТЬ СВОЙ ПРИМЕР -->
+  <div class="panel">
+    <div class="phead" data-i18n="index.add_example">➕ Добавить свой пример</div>
+    <div class="pbody" style="font-size:10px">
+      <div style="margin-bottom:8px">
+        <label style="color:var(--text2);display:block;margin-bottom:3px" data-i18n="index.site_url">URL сайта</label>
+        <input id="ex-url" type="text" data-i18n-placeholder="index.site_url" placeholder="https://example.com" class="setting-input wide" style="width:100%">
+      </div>
+      <div style="margin-bottom:8px">
+        <label style="color:var(--text2);display:block;margin-bottom:3px" data-i18n="index.design_score_label">Оценка дизайна</label>
+        <textarea id="ex-design" data-i18n-placeholder="index.design_score_placeholder" placeholder="Что нравится/не нравится в дизайне..." class="setting-input wide" style="width:100%;height:50px;padding:6px 8px;font-family:var(--mono);resize:none;border-radius:6px;border:1px solid var(--bdr2)"></textarea>
+      </div>
+      <div style="margin-bottom:8px">
+        <label style="color:var(--text2);display:block;margin-bottom:3px" data-i18n="index.ux_score_label">Оценка UX</label>
+        <textarea id="ex-ux" data-i18n-placeholder="index.ux_score_placeholder" placeholder="Что удобно/неудобно в использовании..." class="setting-input wide" style="width:100%;height:50px;padding:6px 8px;font-family:var(--mono);resize:none;border-radius:6px;border:1px solid var(--bdr2)"></textarea>
+      </div>
+      <div style="display:flex;gap:6px">
+        <button class="btn-save-settings" id="btn-good-ex" style="flex:1;background:rgba(0,255,136,.1);color:#3ec87a;border:1px solid #246444" onclick="addManualExample(true)" data-i18n="index.good">👍 Хороший</button>
+        <button class="btn-save-settings" id="btn-bad-ex" style="flex:1;background:rgba(255,68,85,.1);color:#ff4455;border:1px solid #5a2a2f" onclick="addManualExample(false)" data-i18n="index.bad">👎 Плохой</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- БАЗА ДАННЫХ -->
+  <div class="panel">
+    <div class="phead" data-i18n="index.database">💾 База данных</div>
+    <div class="pbody">
+      <div class="db-stat"><span data-i18n="index.total_sites">Всего сайтов</span><span class="db-val" id="db-total">0</span></div>
+      <div class="db-stat"><span data-i18n="index.cities">Городов</span><span class="db-val" id="db-cities">0</span></div>
+      <div style="margin-top:12px;display:flex;flex-direction:column;gap:8px">
+        <a href="/download" class="btn-dl" data-i18n="index.download_sites_excel">📊 Сайты</a>
+        <a href="/download/products" class="btn-dl" style="border-color:var(--amber);color:var(--amber)" data-i18n="index.download_products_excel">🛍️ Товары/Услуги</a>
+        <a href="/download/social" class="btn-dl" style="border-color:var(--purple);color:var(--purple)" data-i18n="index.download_social_excel">📱 Соцсети</a>
+        <button class="btn-dl" style="background:linear-gradient(135deg,#1a2a1a,#0b1f12);border-color:#7c3aed;color:#7c3aed;text-decoration:none;cursor:pointer;padding:11px 16px" onclick="openRecheckDialog()" id="btn-recheck" data-i18n="index.recheck_db">🔄 Перепроверить БД</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ПОДПИСКА -->
+  <div class="panel" id="subscription-panel" style="display:none">
+    <div class="phead">💎 <span data-i18n="index.subscription">Моя подписка</span></div>
+    <div class="pbody">
+      <div style="text-align:center;margin-bottom:12px">
+        <div id="sub-plan-name" style="font-size:16px;font-weight:700;color:var(--cyan)">Basic</div>
+        <div id="sub-status" style="font-size:11px;color:var(--green)">✓ Активна</div>
+      </div>
+      <div class="db-stat"><span>Городов сегодня</span><span class="db-val" id="sub-cities-today">0/3</span></div>
+      <div class="db-stat"><span>Сайтов на город</span><span class="db-val" id="sub-sites-limit">30</span></div>
+      <div class="db-stat"><span>Параллельно</span><span class="db-val" id="sub-parallel-limit">3</span></div>
+      <div class="db-stat"><span>Экспорт</span><span class="db-val" id="sub-export">❌</span></div>
+      <div style="margin-top:12px">
+        <button class="btn-dl" style="width:100%;border-color:var(--purple);color:var(--purple);cursor:pointer" onclick="window.location.href='/subscription'">
+          ⬆️ Улучшить план
+        </button>
+      </div>
+    </div>
+  </div>
+
+</div>
+<!-- /SIDEBAR -->
+
+<!-- ── MAIN ── -->
+<div class="main-area">
+
+  <!-- STATS -->
+  <div class="stats">
+    <div class="scard" id="sc-found">
+      <div class="slabel" data-i18n="index.found">Найдено</div>
+      <div class="sval c" id="sv-found">0</div>
+      <div class="ssub" data-i18n="index.new_domains">новых доменов</div>
+    </div>
+    <div class="scard" id="sc-analyzed">
+      <div class="slabel" data-i18n="index.analyzed">Проанализировано</div>
+      <div class="sval g" id="sv-analyzed">0</div>
+      <div class="ssub" data-i18n="index.this_run">этот запуск</div>
+    </div>
+    <div class="scard">
+      <div class="slabel" data-i18n="index.in_queue">В очереди</div>
+      <div class="sval a" id="sv-left">0</div>
+      <div class="ssub" data-i18n="index.waiting">ожидают</div>
+    </div>
+    <div class="scard">
+      <div class="slabel" data-i18n="index.skipped">Пропущено</div>
+      <div class="sval r" id="sv-skipped">0</div>
+      <div class="ssub" data-i18n="index.captcha_error">капча / ошибка</div>
+    </div>
+    <div class="scard">
+      <div class="slabel" data-i18n="index.in_db_total">В БД всего</div>
+      <div class="sval p" id="sv-db">0</div>
+      <div class="ssub" data-i18n="index.unique_sites">уникальных сайтов</div>
+    </div>
+    <div class="scard">
+      <div class="slabel" data-i18n="index.time">Время</div>
+      <div class="sval" id="sv-elapsed" style="font-size:15px;transition:none">0м 00с</div>
+      <div class="ssub" data-i18n="index.current_city">текущий город</div>
+    </div>
+  </div>
+
+  <!-- PROGRESS -->
+  <div class="prog">
+    <div class="prog-head">
+      <div class="prog-title"><span data-i18n="index.progress">Прогресс</span> — <span id="prog-city" data-i18n="index.waiting">ожидание</span></div>
+      <div class="prog-pct" id="pct">0%</div>
+    </div>
+    <div class="prog-track"><div class="prog-fill" id="pfill"></div></div>
+    <div class="cur-url" id="cur-url" data-i18n="index.waiting_start">Ожидание запуска...</div>
+  </div>
+
+  <!-- LOG + RESULTS -->
+  <div class="content-grid">
+    <div>
+      <div class="panel">
+        <div class="phead"><div class="blink" id="lb"></div><span data-i18n="index.agent_log">Лог агентов</span></div>
+        <div id="log"></div>
+      </div>
+      <div class="chip-section" style="margin-top:14px">
+        <div class="phead" style="padding:0;border:none"><div class="blink" id="ub"></div><span data-i18n="index.current_domains">Домены текущего города</span></div>
+        <div class="chip-grid" id="chips"></div>
+      </div>
+    </div>
+    <div class="results-panel">
+      <div class="phead" data-i18n="index.recent_results">Последние результаты</div>
+      <div id="rlist">
+        <div style="padding:20px;text-align:center;color:var(--text3);font-size:11px" data-i18n="index.waiting_for_analysis">
+          Результаты появятся<br>после начала анализа
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /main-area -->
+</div><!-- /layout -->
+</div><!-- /wrap -->
+
+<script src="/static/main/js/index_core.js"></script>
+<script src="/static/chat/js/chat_runtime.js"></script>
+</body>
+</html>
+
+

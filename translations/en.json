@@ -301,7 +301,7 @@
     "product_search": "Products/Services Search",
     "what_search": "🔍 What are you looking for?",
     "what_search_placeholder": "For example: sneakers, apartment renovation, food delivery...",
-    "synonyms_hint": "The system will automatically consider synonyms: sneakers=shoes=footwear",
+    "synonyms_hint": "The system handles synonyms and word forms: sneakers=trainers=footwear, phone=smartphone=mobile, jacket=windbreaker=outerwear",
     "city_region": "📍 City/Region",
     "city_region_placeholder": "Moscow, SPb, Russia...",
     "max_results": "📊 Max results",

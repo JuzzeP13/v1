@@ -77,7 +77,7 @@ services:
       dockerfile: Dockerfile
     container_name: tish_celery
     restart: unless-stopped
-    command: celery -A celery_worker worker --loglevel=info --concurrency=4
+    command: celery -A modules.system.python.celery_worker:celery_app worker --loglevel=info --concurrency=4
     environment:
       - DATABASE_URL=postgresql://${DB_USER:-tish_user}:${DB_PASSWORD:-change_me_production_password}@postgres:5432/tish_db
       - SECRET_KEY=${SECRET_KEY}
@@ -102,7 +102,7 @@ services:
       dockerfile: Dockerfile
     container_name: tish_celery_beat
     restart: unless-stopped
-    command: celery -A celery_worker beat --loglevel=info
+    command: celery -A modules.system.python.celery_worker:celery_app beat --loglevel=info
     environment:
       - DATABASE_URL=postgresql://${DB_USER:-tish_user}:${DB_PASSWORD:-change_me_production_password}@postgres:5432/tish_db
       - SECRET_KEY=${SECRET_KEY}
