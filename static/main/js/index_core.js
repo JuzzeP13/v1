@@ -382,12 +382,15 @@ function loadAvailableModels() {
 }
 
 function loadExamples() {
+  const goodDiv = document.getElementById("examples-good");
+  const badDiv = document.getElementById("examples-bad");
+  if (!goodDiv || !badDiv) {
+    return;
+  }
+
   fetch("/api/examples")
     .then(r => r.json())
     .then(d => {
-      const goodDiv = document.getElementById("examples-good");
-      const badDiv = document.getElementById("examples-bad");
-      
       if (d.good && d.good.length > 0) {
         goodDiv.innerHTML = d.good.map(e => `<div style="margin-bottom:4px">• ${new URL(e.url).hostname}</div>`).join("");
       } else {
@@ -722,9 +725,16 @@ function saveExample(url, design, ux, isGood) {
 }
 
 function addManualExample(isGood) {
-  const url = document.getElementById("ex-url").value;
-  const design = document.getElementById("ex-design").value;
-  const ux = document.getElementById("ex-ux").value;
+  const urlInput = document.getElementById("ex-url");
+  const designInput = document.getElementById("ex-design");
+  const uxInput = document.getElementById("ex-ux");
+  if (!urlInput || !designInput || !uxInput) {
+    return;
+  }
+
+  const url = urlInput.value;
+  const design = designInput.value;
+  const ux = uxInput.value;
   
   if (!url || !design || !ux) {
     alert(uiText("fillAllFields"));
@@ -739,9 +749,9 @@ function addManualExample(isGood) {
   });
   
   // Очищаем форму
-  document.getElementById("ex-url").value = "";
-  document.getElementById("ex-design").value = "";
-  document.getElementById("ex-ux").value = "";
+  urlInput.value = "";
+  designInput.value = "";
+  uxInput.value = "";
 }
 
 function saveScores(domain, index) {
