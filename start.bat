@@ -89,19 +89,19 @@ if errorlevel 1 (
 )
 echo.
 
-REM 7) Vision model (qwen3-vl or llava)
-echo [INFO] Checking vision model...
-python -c "import requests,sys; r=requests.get('http://localhost:11434/api/tags',timeout=10); models=r.json().get('models', []); vision=[m for m in models if (lambda n: ('llava' in n) or ('-vl' in n) or ('vl-' in n) or ('vision' in n))((m.get('name','') or '').lower())]; sys.exit(0 if vision else 1)" >nul 2>&1
+REM 7) Vision model (always llava)
+echo [INFO] Checking llava model...
+python -c "import requests,sys; r=requests.get('http://localhost:11434/api/tags',timeout=10); models=r.json().get('models', []); names=[(m.get('name','') or '').lower() for m in models]; has_llava=any(('llava' in n) for n in names); sys.exit(0 if has_llava else 1)" >nul 2>&1
 if errorlevel 1 (
-    echo [INFO] Vision model not found. Pulling qwen3-vl...
-    ollama pull qwen3-vl
+    echo [INFO] LLaVA not found. Pulling llava:latest...
+    ollama pull llava:latest
     if errorlevel 1 (
-        echo [ERROR] Failed to pull vision model.
+        echo [ERROR] Failed to pull llava model.
         pause
         exit /b 1
     )
 ) else (
-    echo [OK] Vision model found.
+    echo [OK] LLaVA model found.
 )
 echo.
 

@@ -45,7 +45,7 @@ class Config:
     
     # Ollama
     OLLAMA_URL = os.environ.get('OLLAMA_URL') or 'http://localhost:11434'
-    VISION_MODEL = os.environ.get('VISION_MODEL') or 'qwen3-vl:latest'
+    VISION_MODEL = os.environ.get('VISION_MODEL') or 'llava:latest'
     PRODUCT_SEARCH_USE_OLLAMA = os.environ.get('PRODUCT_SEARCH_USE_OLLAMA', 'False').lower() in ('true', '1', 'yes')
     PRODUCT_SEARCH_OLLAMA_MODEL = os.environ.get('PRODUCT_SEARCH_OLLAMA_MODEL') or ''
     PRODUCT_SEARCH_MAX_QUERIES = _env_int('PRODUCT_SEARCH_MAX_QUERIES', 60)

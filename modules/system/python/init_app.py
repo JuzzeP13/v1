@@ -126,7 +126,7 @@ def check_ollama() -> bool:
             if vision_models:
                 print(f"Vision-модели: {', '.join(m['name'] for m in vision_models)}")
             else:
-                print("⚠ Нет vision-моделей. Установите: ollama pull qwen3-vl")
+                print("⚠ Нет vision-моделей. Установите: ollama pull llava:latest")
             return True
 
         print(f"⚠ Ollama вернула статус {r.status_code}")
@@ -199,7 +199,7 @@ def main() -> None:
     print("=" * 60)
     print("\nСледующие шаги:")
     print("  1. Настройте .env с реальными SMTP-параметрами")
-    print("  2. Установите vision-модель: ollama pull qwen3-vl")
+    print("  2. Установите vision-модель: ollama pull llava:latest")
     print("  3. Запустите сервер: python -m modules.main.python.server")
     print("  4. Откройте: http://localhost:5000")
     print()
