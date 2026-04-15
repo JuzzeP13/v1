@@ -856,3 +856,124 @@
 2026-04-13 16:52:00,804 | INFO | Thread-21 (process_youtube_trends) | [YouTube Trends] Два прохода подряд без новых видео, завершаю добор.
 2026-04-13 16:52:00,807 | INFO | Thread-21 (process_youtube_trends) | [YouTube Trends] Добор из unknown-subs: +41 (нужно было 50)
 2026-04-13 16:52:00,807 | INFO | Thread-21 (process_youtube_trends) | [YouTube Trends] РС‚РѕРіРѕ: 41 РІРёРґРµРѕ
+2026-04-14 22:12:58,993 | INFO | Thread-41 (process_youtube_trends) | [YouTube Trends] РџРѕРёСЃРє: query='PWGooD', max=66, lang=RU
+2026-04-14 22:12:58,997 | INFO | Thread-41 (process_youtube_trends) | [YouTube Trends] Р¤РёР»СЊС‚СЂС‹: duration=4-25min, subs=0-10000000
+2026-04-14 22:12:58,998 | INFO | Thread-41 (process_youtube_trends) | [YouTube Trends] РџР°СЂР°Р»Р»РµР»СЊРЅС‹С… Р·Р°РїСЂРѕСЃРѕРІ РјРµС‚Р°РґР°РЅРЅС‹С…: 12
+2026-04-14 22:12:58,998 | INFO | Thread-41 (process_youtube_trends) | [YouTube Trends] РџРѕРІС‚РѕСЂРѕРІ РїРѕРёСЃРєРѕРІРѕРіРѕ Р·Р°РїСЂРѕСЃР°: 1
+2026-04-14 22:12:58,998 | INFO | Thread-41 (process_youtube_trends) | [YouTube Trends] В БД уже есть 41 видео — они будут пропущены
+2026-04-14 22:12:58,999 | INFO | Thread-41 (process_youtube_trends) | [YouTube Trends] Проход 1/5 | Собрано 0/66 | x2
+2026-04-14 22:12:58,999 | INFO | Thread-41 (process_youtube_trends) | [YouTube Trends] Р—Р°РїСЂРѕСЃ: site:youtube.com/watch PWGooD
+2026-04-14 22:13:02,036 | INFO | Thread-41 (process_youtube_trends) | [YouTube Trends] РЎС‹СЂС‹С… СЂРµР·СѓР»СЊС‚Р°С‚РѕРІ: 46
+2026-04-14 22:13:03,027 | INFO | Thread-41 (process_youtube_trends) | [YouTube Trends] РџСЂРѕРїСѓС‰РµРЅРѕ (РґР»РёС‚РµР»СЊРЅРѕСЃС‚СЊ): PWGood майншилд - YouTube
+2026-04-14 22:13:03,070 | INFO | Thread-41 (process_youtube_trends) | [YouTube Trends] Р’РёРґРµРѕ: ПУГОД ПРО ЭНД АПДЕЙТ - YouTube... (Views: 22840, Score: 53.6)
+2026-04-14 22:13:03,140 | INFO | Thread-41 (process_youtube_trends) | [YouTube Trends] РџСЂРѕРїСѓС‰РµРЅРѕ (РєР°РЅР°Р» СѓР¶Рµ РѕР±СЂР°Р±РѕС‚Р°РЅ): ПУГОД ПРО ЖОПУ И СЕРДЕЧКО - YouTube
+2026-04-14 22:13:03,144 | INFO | Thread-41 (process_youtube_trends) | [YouTube Trends] РџСЂРѕРїСѓС‰РµРЅРѕ (РґР»РёС‚РµР»СЊРЅРѕСЃС‚СЊ): Я думаю у меня есть шанс... #pwgood #пугод #игравк
+2026-04-14 22:13:03,207 | INFO | Thread-41 (process_youtube_trends) | [YouTube Trends] РџСЂРѕРїСѓС‰РµРЅРѕ (РґР»РёС‚РµР»СЊРЅРѕСЃС‚СЊ): nowkie и ФПИ Банк - СОЗДАНИЕ КАРТОЧЕК с PWGood! КА
+2026-04-14 22:13:03,213 | INFO | Thread-41 (process_youtube_trends) | [YouTube Trends] РџСЂРѕРїСѓС‰РµРЅРѕ (РґР»РёС‚РµР»СЊРЅРѕСЃС‚СЊ): ПУГОД ИГРАЕТ В ГЕОГЕССЕР - YouTube
+2026-04-14 22:13:03,246 | INFO | Thread-41 (process_youtube_trends) | [YouTube Trends] РџСЂРѕРїСѓС‰РµРЅРѕ (РґР»РёС‚РµР»СЊРЅРѕСЃС‚СЊ): Мем по PWVerse #minecraft#pwgood #pwverse - YouTub
+2026-04-14 22:13:03,349 | INFO | Thread-41 (process_youtube_trends) | [YouTube Trends] РџСЂРѕРїСѓС‰РµРЅРѕ (РґР»РёС‚РµР»СЊРЅРѕСЃС‚СЊ): #pwgood на #Twitch | Никому не нужен твой дом - Yo
+2026-04-14 22:13:04,062 | INFO | Thread-41 (process_youtube_trends) | [YouTube Trends] РџСЂРѕРїСѓС‰РµРЅРѕ (РґР»РёС‚РµР»СЊРЅРѕСЃС‚СЊ): PWGood LORE - YouTube
+2026-04-14 22:13:04,200 | INFO | Thread-41 (process_youtube_trends) | [YouTube Trends] Р’РёРґРµРѕ: У ПУГОДА НОВАЯ РЕКЛАМА PWGood Store - YouTube... (Views: 12659, Score: 51.9)
+2026-04-14 22:13:04,217 | INFO | Thread-41 (process_youtube_trends) | [YouTube Trends] Р’РёРґРµРѕ: МШ3 | PWGOOD, MODDYCHAT и ЖИРАФ ОПЯТЬ ПЫТАЮТСЯ ДОС... (Views: 14751, Score: 49.5)
+2026-04-14 22:13:04,283 | INFO | Thread-41 (process_youtube_trends) | [YouTube Trends] РџСЂРѕРїСѓС‰РµРЅРѕ (РґР»РёС‚РµР»СЊРЅРѕСЃС‚СЊ): PWGood пытался заплатить мне за это видео! / Мой с
+2026-04-14 22:13:04,315 | INFO | Thread-41 (process_youtube_trends) | [YouTube Trends] Р’РёРґРµРѕ: Компьютер в майнкрафте! К.О.К. Pepeland 6! Нарезка... (Views: 3797, Score: 46.0)
+2026-04-14 22:13:04,425 | INFO | Thread-41 (process_youtube_trends) | [YouTube Trends] РџСЂРѕРїСѓС‰РµРЅРѕ (РєР°РЅР°Р» СѓР¶Рµ РѕР±СЂР°Р±РѕС‚Р°РЅ): PWGOOD ВКЛЮЧИЛ ШЕЙДЕРЫ | пугод нарезки | @PWGood /
+2026-04-14 22:13:04,473 | INFO | Thread-41 (process_youtube_trends) | [YouTube Trends] РџСЂРѕРїСѓС‰РµРЅРѕ (РєР°РЅР°Р» СѓР¶Рµ РѕР±СЂР°Р±РѕС‚Р°РЅ): PWGOOD ЗАСЕЛЯЕТ СЕРВЕР КОТАМИ | пугод нарезки - Yo
+2026-04-14 22:13:04,532 | INFO | Thread-41 (process_youtube_trends) | [YouTube Trends] Р’РёРґРµРѕ: ЭНДЕРМЭНЫ ЗАХВАТЫВАЮТ СЕРВЕР ► PepeLand 10 Серия 2... (Views: 51004, Score: 57.5)
+2026-04-14 22:13:05,004 | INFO | Thread-41 (process_youtube_trends) | [YouTube Trends] РџСЂРѕРїСѓС‰РµРЅРѕ (РєР°РЅР°Р» СѓР¶Рµ РѕР±СЂР°Р±РѕС‚Р°РЅ): ПУГОД ПРО ВСЯКОЕ - YouTube
+2026-04-14 22:13:05,144 | INFO | Thread-41 (process_youtube_trends) | [YouTube Trends] РџСЂРѕРїСѓС‰РµРЅРѕ (РґР»РёС‚РµР»СЊРЅРѕСЃС‚СЊ): PWGood - PWBad (На русском | AI Cover by botyar) -
+2026-04-14 22:13:05,173 | INFO | Thread-41 (process_youtube_trends) | [YouTube Trends] РџСЂРѕРїСѓС‰РµРЅРѕ (РєР°РЅР°Р» СѓР¶Рµ РѕР±СЂР°Р±РѕС‚Р°РЅ): ПУГОД ПРОХОДИТ МОД ПРО СЕБЯ (PWGOOD ADVENTURE MOD)
+2026-04-14 22:13:05,199 | INFO | Thread-41 (process_youtube_trends) | [YouTube Trends] РџСЂРѕРїСѓС‰РµРЅРѕ (РєР°РЅР°Р» СѓР¶Рµ РѕР±СЂР°Р±РѕС‚Р°РЅ): ПУГОД БОЛТАЕТ С МОДДИ - YouTube
+2026-04-14 22:13:05,432 | INFO | Thread-41 (process_youtube_trends) | [YouTube Trends] Р’РёРґРµРѕ: Пугод провёл ГЛАВНЫЙ ИВЕНТ Эксперимента 210 / Pepe... (Views: 37377, Score: 57.1)
+2026-04-14 22:13:05,464 | INFO | Thread-41 (process_youtube_trends) | [YouTube Trends] РџСЂРѕРїСѓС‰РµРЅРѕ (РєР°РЅР°Р» СѓР¶Рµ РѕР±СЂР°Р±РѕС‚Р°РЅ): МШ3 | PWGOOD, MODDYCHAT и ЖИРАФ СТРОЯТ МАГАЗИН | п
+2026-04-14 22:13:05,513 | INFO | Thread-41 (process_youtube_trends) | [YouTube Trends] РџСЂРѕРїСѓС‰РµРЅРѕ (РєР°РЅР°Р» СѓР¶Рµ РѕР±СЂР°Р±РѕС‚Р°РЅ): Пугод играет В ЛУЧШУЮ ИГРУ ВАРИТИ ФЕСТИВАЛЯ - Whal
+2026-04-14 22:13:05,724 | INFO | Thread-41 (process_youtube_trends) | [YouTube Trends] Р’РёРґРµРѕ: Probability Fair - Probability Game - YouTube... (Views: 219740, Score: 71.9)
+2026-04-14 22:13:06,024 | INFO | Thread-41 (process_youtube_trends) | [YouTube Trends] РџСЂРѕРїСѓС‰РµРЅРѕ (РґР»РёС‚РµР»СЊРЅРѕСЃС‚СЊ): PWGoodAI - Я смотрю на свой огромный... | ai cover
+2026-04-14 22:13:06,306 | INFO | Thread-41 (process_youtube_trends) | [YouTube Trends] РџСЂРѕРїСѓС‰РµРЅРѕ (РґР»РёС‚РµР»СЊРЅРѕСЃС‚СЊ): #pwgood на #Twitch | Эксперимент 25 - YouTube
+2026-04-14 22:13:06,329 | INFO | Thread-41 (process_youtube_trends) | [YouTube Trends] РџСЂРѕРїСѓС‰РµРЅРѕ (РєР°РЅР°Р» СѓР¶Рµ РѕР±СЂР°Р±РѕС‚Р°РЅ): МШ3 | PWGOOD, MODDYCHAT и ЖИРАФ НАКОНЕЦ ДОСТРОИЛИ
+2026-04-14 22:13:06,367 | INFO | Thread-41 (process_youtube_trends) | [YouTube Trends] РџСЂРѕРїСѓС‰РµРЅРѕ (РґР»РёС‚РµР»СЊРЅРѕСЃС‚СЊ): PWGoodx Sanhez | ПУГОД СМОТРИТ ПРЕДЛОЖКУ - YouTube
+2026-04-14 22:13:06,400 | INFO | Thread-41 (process_youtube_trends) | [YouTube Trends] Р’РёРґРµРѕ: PWGoodреакция | Я построил САМЫЙ БЫСТРЫЙ... - YouT... (Views: 16208, Score: 50.0)
+2026-04-14 22:13:06,430 | INFO | Thread-41 (process_youtube_trends) | [YouTube Trends] РџСЂРѕРїСѓС‰РµРЅРѕ (РґР»РёС‚РµР»СЊРЅРѕСЃС‚СЊ): У МЕНЯ ТУТ ШАЛКЕР ДЫРЯВЫЙ! #minecraft #mineshield
+2026-04-14 22:13:06,591 | INFO | Thread-41 (process_youtube_trends) | [YouTube Trends] РџСЂРѕРїСѓС‰РµРЅРѕ (РєР°РЅР°Р» СѓР¶Рµ РѕР±СЂР°Р±РѕС‚Р°РЅ): ЛУЧШЕЕ ЗА ГОД | Самые смешные клипы | Нарезка клип
+2026-04-14 22:13:06,658 | INFO | Thread-41 (process_youtube_trends) | [YouTube Trends] РџСЂРѕРїСѓС‰РµРЅРѕ (РєР°РЅР°Р» СѓР¶Рµ РѕР±СЂР°Р±РѕС‚Р°РЅ): PWGoodреакция | Мудреныч | ИНДИЙСКИЕ... - YouTube
+2026-04-14 22:13:06,934 | INFO | Thread-41 (process_youtube_trends) | [YouTube Trends] РџСЂРѕРїСѓС‰РµРЅРѕ (РґР»РёС‚РµР»СЊРЅРѕСЃС‚СЊ): PWGood майншилд - YouTube
+2026-04-14 22:13:07,112 | INFO | Thread-41 (process_youtube_trends) | [YouTube Trends] РџСЂРѕРїСѓС‰РµРЅРѕ (РґР»РёС‚РµР»СЊРЅРѕСЃС‚СЊ): pwgood на #Twitch | ахаха дом сгорел #мш #майншилд
+2026-04-14 22:13:07,136 | INFO | Thread-41 (process_youtube_trends) | [YouTube Trends] РџСЂРѕРїСѓС‰РµРЅРѕ (РєР°РЅР°Р» СѓР¶Рµ РѕР±СЂР°Р±РѕС‚Р°РЅ): PWGoodреакция | Mr. BAV | Пройти можно только вдво
+2026-04-14 22:13:07,356 | INFO | Thread-41 (process_youtube_trends) | [YouTube Trends] РџСЂРѕРїСѓС‰РµРЅРѕ (РґР»РёС‚РµР»СЊРЅРѕСЃС‚СЊ): Пугод смотрит и делает РАЗБОР РАЗБОРА СВОЕГО РОЛИК
+2026-04-14 22:13:10,284 | INFO | Thread-41 (process_youtube_trends) | [YouTube Trends] РџСЂРѕРїСѓС‰РµРЅРѕ (РґР»РёС‚РµР»СЊРЅРѕСЃС‚СЊ): pwgood на #Twitch | minecraft.da че? #мш #майншилд
+2026-04-14 22:13:10,286 | INFO | Thread-41 (process_youtube_trends) | [YouTube Trends] Р—Р°РїСЂРѕСЃ: site:youtube.com/watch PWGooD СЃРјРѕС‚СЂРµС‚СЊ
+2026-04-14 22:13:12,682 | INFO | Thread-41 (process_youtube_trends) | [YouTube Trends] РЎС‹СЂС‹С… СЂРµР·СѓР»СЊС‚Р°С‚РѕРІ: 36
+2026-04-14 22:13:13,662 | INFO | Thread-41 (process_youtube_trends) | [YouTube Trends] РџСЂРѕРїСѓС‰РµРЅРѕ (РґР»РёС‚РµР»СЊРЅРѕСЃС‚СЊ): Пугод смотрит Сибирского - Клипы ВК - ЦИФРОВАЯ АМП
+2026-04-14 22:13:13,708 | INFO | Thread-41 (process_youtube_trends) | [YouTube Trends] РџСЂРѕРїСѓС‰РµРЅРѕ (РґР»РёС‚РµР»СЊРЅРѕСЃС‚СЊ): PWGood ft, Snrgiraffe ЗА ДЕНЬГИ ДА - YouTube
+2026-04-14 22:13:13,781 | INFO | Thread-41 (process_youtube_trends) | [YouTube Trends] РџСЂРѕРїСѓС‰РµРЅРѕ (РєР°РЅР°Р» СѓР¶Рµ РѕР±СЂР°Р±РѕС‚Р°РЅ): ПУГОД ИГРАЕТ В ГЕОГЕССЕР С РАЗГОВОРЧИКАМИ - YouTub
+2026-04-14 22:13:13,782 | INFO | Thread-41 (process_youtube_trends) | [YouTube Trends] РџСЂРѕРїСѓС‰РµРЅРѕ (РґР»РёС‚РµР»СЊРЅРѕСЃС‚СЊ): Пугод встретил Обсидиантайма || МаинШилд... - YouT
+2026-04-14 22:13:13,816 | INFO | Thread-41 (process_youtube_trends) | [YouTube Trends] РџСЂРѕРїСѓС‰РµРЅРѕ (РґР»РёС‚РµР»СЊРЅРѕСЃС‚СЊ): ПУГОД ПРОВЕЛ СУД С РУНЕКОМ - YouTube
+2026-04-14 22:13:13,849 | INFO | Thread-41 (process_youtube_trends) | [YouTube Trends] РџСЂРѕРїСѓС‰РµРЅРѕ (РєР°РЅР°Р» СѓР¶Рµ РѕР±СЂР°Р±РѕС‚Р°РЅ): ПУГОД БОРЕТСЯ С АНГЛИЦИЗМАМИ - YouTube
+2026-04-14 22:13:13,885 | INFO | Thread-41 (process_youtube_trends) | [YouTube Trends] Р’РёРґРµРѕ: ШАЛЬНОЙ МАЙНШИЛД (PWGood, Alfedov, ObsidianTime...... (Views: 150083, Score: 65.4)
+2026-04-14 22:13:13,925 | INFO | Thread-41 (process_youtube_trends) | [YouTube Trends] РџСЂРѕРїСѓС‰РµРЅРѕ (РґР»РёС‚РµР»СЊРЅРѕСЃС‚СЊ): ВСПОМНИЛ - YouTube
+2026-04-14 22:13:13,961 | INFO | Thread-41 (process_youtube_trends) | [YouTube Trends] Р’РёРґРµРѕ: ПУГОД РЖЁТ НАД НОВОЙ ОЗВУЧКОЙ ДОНАТОВ - YouTube... (Views: 31718, Score: 60.0)
+2026-04-14 22:13:14,053 | INFO | Thread-41 (process_youtube_trends) | [YouTube Trends] РџСЂРѕРїСѓС‰РµРЅРѕ (РґР»РёС‚РµР»СЊРЅРѕСЃС‚СЊ): ОБХОД PepeLand 7 - День 7! В гостях RandomCancer!
+2026-04-14 22:13:14,091 | INFO | Thread-41 (process_youtube_trends) | [YouTube Trends] Р’РёРґРµРѕ: ПУГОД СМОТРИТ - Я - ЗАРАЖЁН, а они НЕТ //PWGood...... (Views: 101188, Score: 63.4)
+2026-04-14 22:13:14,237 | INFO | Thread-41 (process_youtube_trends) | [YouTube Trends] РџСЂРѕРїСѓС‰РµРЅРѕ (РґР»РёС‚РµР»СЊРЅРѕСЃС‚СЊ): ПУГОД ДЕПАЕТ ВСЕ В CLOVERPIT - YouTube
+2026-04-14 22:13:14,695 | INFO | Thread-41 (process_youtube_trends) | [YouTube Trends] Р’РёРґРµРѕ: Sharpening Wheel For Razor Sharp Blades! MDF - You... (Views: 5088330, Score: 93.7)
+2026-04-14 22:13:14,696 | INFO | Thread-41 (process_youtube_trends) | [YouTube Trends] Р—Р°РїСЂРѕСЃ: site:youtube.com/watch PWGooD РІРёРґРµРѕ
+2026-04-14 22:13:16,822 | INFO | Thread-41 (process_youtube_trends) | [YouTube Trends] РЎС‹СЂС‹С… СЂРµР·СѓР»СЊС‚Р°С‚РѕРІ: 25
+2026-04-14 22:13:18,119 | INFO | Thread-41 (process_youtube_trends) | [YouTube Trends] РџСЂРѕРїСѓС‰РµРЅРѕ (РґР»РёС‚РµР»СЊРЅРѕСЃС‚СЊ): ПУГОД ПРОВОДИТ БИТВУ КОСТЮМОВ НА PEPELAND 9 - YouT
+2026-04-14 22:13:18,274 | INFO | Thread-41 (process_youtube_trends) | [YouTube Trends] РџСЂРѕРїСѓС‰РµРЅРѕ (РґР»РёС‚РµР»СЊРЅРѕСЃС‚СЊ): ЛУЧШАЯ КОМАНДА ТУРНИРА / PWGood нарезки - YouTube
+2026-04-14 22:13:18,281 | INFO | Thread-41 (process_youtube_trends) | [YouTube Trends] РџСЂРѕРїСѓС‰РµРЅРѕ (РґР»РёС‚РµР»СЊРЅРѕСЃС‚СЊ): ПУГОД СПАЛИЛ ЛИЦО В КРУЖКЕ ТГ МАЙНШИЛДА? (мем) - Y
+2026-04-14 22:13:18,352 | INFO | Thread-41 (process_youtube_trends) | [YouTube Trends] Р’РёРґРµРѕ: ПУГОД СМОТРИТ ЧТО ГУГЛЯТ ЗРИТЕЛИ?! - фанфики, лицо... (Views: 29512, Score: 55.6)
+2026-04-14 22:13:18,390 | INFO | Thread-41 (process_youtube_trends) | [YouTube Trends] РџСЂРѕРїСѓС‰РµРЅРѕ (РєР°РЅР°Р» СѓР¶Рµ РѕР±СЂР°Р±РѕС‚Р°РЅ): ПУГОД ПРО ШКОЛЬНУЮ ФОРМУ - YouTube
+2026-04-14 22:13:18,486 | INFO | Thread-41 (process_youtube_trends) | [YouTube Trends] РџСЂРѕРїСѓС‰РµРЅРѕ (РґР»РёС‚РµР»СЊРЅРѕСЃС‚СЊ): YouTube Music
+2026-04-14 22:13:18,497 | INFO | Thread-41 (process_youtube_trends) | [YouTube Trends] РџСЂРѕРїСѓС‰РµРЅРѕ (РґР»РёС‚РµР»СЊРЅРѕСЃС‚СЊ): Пугод провёл ФЕСТИВАЛЬ РАЗБАНОВ / PWGood нарезки -
+2026-04-14 22:13:18,502 | INFO | Thread-41 (process_youtube_trends) | [YouTube Trends] Р’РёРґРµРѕ: ЭТО ЛИЦО ПУГОДА? ПУГОД ЕДЕТ НА МАШИНЕ И ОБСУЖДАЕТ ... (Views: 0, Score: 0.0)
+2026-04-14 22:13:18,548 | INFO | Thread-41 (process_youtube_trends) | [YouTube Trends] Р’РёРґРµРѕ: Я ПРЕВРАТИЛ ДЕРЕВНЮ В СВАЛКУ | МайнШилд 3 Серия 1 ... (Views: 44, Score: 14.3)
+2026-04-14 22:13:18,603 | INFO | Thread-41 (process_youtube_trends) | [YouTube Trends] РџСЂРѕРїСѓС‰РµРЅРѕ (РґР»РёС‚РµР»СЊРЅРѕСЃС‚СЊ): YouTube Music
+2026-04-14 22:13:22,518 | INFO | Thread-41 (process_youtube_trends) | [YouTube Trends] РџСЂРѕРїСѓС‰РµРЅРѕ (РєР°РЅР°Р» СѓР¶Рµ РѕР±СЂР°Р±РѕС‚Р°РЅ): ПУГОД СМОТРИТ СВОЁ ВИДЕО - ПОТОП НА СЕРВЕРЕ... - Y
+2026-04-14 22:13:22,520 | INFO | Thread-41 (process_youtube_trends) | [YouTube Trends] Проход 2/5 | Собрано 15/66 | x4
+2026-04-14 22:13:22,520 | INFO | Thread-41 (process_youtube_trends) | [YouTube Trends] Р—Р°РїСЂРѕСЃ: site:youtube.com/watch PWGooD
+2026-04-14 22:13:24,546 | INFO | Thread-41 (process_youtube_trends) | [YouTube Trends] РЎС‹СЂС‹С… СЂРµР·СѓР»СЊС‚Р°С‚РѕРІ: 41
+2026-04-14 22:13:25,940 | INFO | Thread-41 (process_youtube_trends) | [YouTube Trends] Р’РёРґРµРѕ: ПУГОД ОБИДИЛ ЧЕЛА В ГЕОГЕСЕРЕ - YouTube... (Views: 10254, Score: 49.0)
+2026-04-14 22:13:26,032 | INFO | Thread-41 (process_youtube_trends) | [YouTube Trends] РџСЂРѕРїСѓС‰РµРЅРѕ (РґР»РёС‚РµР»СЊРЅРѕСЃС‚СЊ): ПРОДАМ НОВУЮ ВИДЕОКАРТУ - YouTube
+2026-04-14 22:13:26,036 | INFO | Thread-41 (process_youtube_trends) | [YouTube Trends] Р—Р°РїСЂРѕСЃ: site:youtube.com/watch PWGooD СЃРјРѕС‚СЂРµС‚СЊ
+2026-04-14 22:13:31,074 | INFO | Thread-41 (process_youtube_trends) | [YouTube Trends] РЎС‹СЂС‹С… СЂРµР·СѓР»СЊС‚Р°С‚РѕРІ: 20
+2026-04-14 22:13:31,096 | INFO | Thread-41 (process_youtube_trends) | [YouTube Trends] Р—Р°РїСЂРѕСЃ: site:youtube.com/watch PWGooD РІРёРґРµРѕ
+2026-04-14 22:13:34,233 | INFO | Thread-41 (process_youtube_trends) | [YouTube Trends] РЎС‹СЂС‹С… СЂРµР·СѓР»СЊС‚Р°С‚РѕРІ: 25
+2026-04-14 22:13:35,160 | INFO | Thread-41 (process_youtube_trends) | [YouTube Trends] Р’РёРґРµРѕ: КАК СОЗДАТЬ ВИДЕО | ЧАСТЬ 2 | перезалито с BOOSTY ... (Views: 196, Score: 21.5)
+2026-04-14 22:13:35,230 | INFO | Thread-41 (process_youtube_trends) | [YouTube Trends] РџСЂРѕРїСѓС‰РµРЅРѕ (РєР°РЅР°Р» СѓР¶Рµ РѕР±СЂР°Р±РѕС‚Р°РЅ): Пугод смотрит Хумаса - ГЛИСТОВОЕ ПОБОИЩЕ... - YouT
+2026-04-14 22:13:35,231 | INFO | Thread-41 (process_youtube_trends) | [YouTube Trends] Проход 3/5 | Собрано 17/66 | x6
+2026-04-14 22:13:35,231 | INFO | Thread-41 (process_youtube_trends) | [YouTube Trends] Р—Р°РїСЂРѕСЃ: site:youtube.com/watch PWGooD
+2026-04-14 22:13:38,983 | INFO | Thread-41 (process_youtube_trends) | [YouTube Trends] РЎС‹СЂС‹С… СЂРµР·СѓР»СЊС‚Р°С‚РѕРІ: 16
+2026-04-14 22:13:40,075 | INFO | Thread-41 (process_youtube_trends) | [YouTube Trends] РџСЂРѕРїСѓС‰РµРЅРѕ (РґР»РёС‚РµР»СЊРЅРѕСЃС‚СЊ): Бобронатор и Владик отвечают на ВОПРОСЫ для... - Y
+2026-04-14 22:13:40,233 | INFO | Thread-41 (process_youtube_trends) | [YouTube Trends] РџСЂРѕРїСѓС‰РµРЅРѕ (РґР»РёС‚РµР»СЊРЅРѕСЃС‚СЊ): ГОНКИ И ГЕОГЕССЕР || Pepeland 7 || ВЫЖИВАНИЕ || @p
+2026-04-14 22:13:41,055 | INFO | Thread-41 (process_youtube_trends) | [YouTube Trends] РџСЂРѕРїСѓС‰РµРЅРѕ (РґР»РёС‚РµР»СЊРЅРѕСЃС‚СЊ): ПУГОД ПОДРУЖИЛСЯ С АРМОРСТЕНДАМИ. - YouTube
+2026-04-14 22:13:42,508 | INFO | Thread-41 (process_youtube_trends) | [YouTube Trends] Р’РёРґРµРѕ: ПОЧЕМУ МЕНЯ ВЗЯЛИ НА МАЙНШИЛД? | MineShield #1 - Y... (Views: 105322, Score: 64.1)
+2026-04-14 22:13:42,509 | INFO | Thread-41 (process_youtube_trends) | [YouTube Trends] Р—Р°РїСЂРѕСЃ: site:youtube.com/watch PWGooD СЃРјРѕС‚СЂРµС‚СЊ
+2026-04-14 22:13:44,723 | INFO | Thread-41 (process_youtube_trends) | [YouTube Trends] РЎС‹СЂС‹С… СЂРµР·СѓР»СЊС‚Р°С‚РѕРІ: 6
+2026-04-14 22:13:45,658 | INFO | Thread-41 (process_youtube_trends) | [YouTube Trends] РџСЂРѕРїСѓС‰РµРЅРѕ (РґР»РёС‚РµР»СЊРЅРѕСЃС‚СЊ): PWGood- Медляк (Kemortan Remix) - YouTube
+2026-04-14 22:13:45,659 | INFO | Thread-41 (process_youtube_trends) | [YouTube Trends] Р—Р°РїСЂРѕСЃ: site:youtube.com/watch PWGooD РІРёРґРµРѕ
+2026-04-14 22:13:49,329 | INFO | Thread-41 (process_youtube_trends) | [YouTube Trends] РЎС‹СЂС‹С… СЂРµР·СѓР»СЊС‚Р°С‚РѕРІ: 6
+2026-04-14 22:13:49,330 | INFO | Thread-41 (process_youtube_trends) | [YouTube Trends] Проход 4/5 | Собрано 18/66 | x8
+2026-04-14 22:13:49,332 | INFO | Thread-41 (process_youtube_trends) | [YouTube Trends] Р—Р°РїСЂРѕСЃ: site:youtube.com/watch PWGooD
+2026-04-14 22:13:51,239 | INFO | Thread-41 (process_youtube_trends) | [YouTube Trends] РЎС‹СЂС‹С… СЂРµР·СѓР»СЊС‚Р°С‚РѕРІ: 6
+2026-04-14 22:13:52,429 | INFO | Thread-41 (process_youtube_trends) | [YouTube Trends] РџСЂРѕРїСѓС‰РµРЅРѕ (РґР»РёС‚РµР»СЊРЅРѕСЃС‚СЊ): PWGood- Грибочки (Ai cover) - YouTube
+2026-04-14 22:13:52,515 | INFO | Thread-41 (process_youtube_trends) | [YouTube Trends] Р’РёРґРµРѕ: PWGoodсмотрит на самый большой дом в средневековой... (Views: 1116, Score: 39.2)
+2026-04-14 22:13:52,517 | INFO | Thread-41 (process_youtube_trends) | [YouTube Trends] РџСЂРѕРїСѓС‰РµРЅРѕ (РґР»РёС‚РµР»СЊРЅРѕСЃС‚СЊ): МЫ ПОСТРОИЛИ АВТОВЕРСТАК НА ИГРОКАХ... - YouTube
+2026-04-14 22:13:52,517 | INFO | Thread-41 (process_youtube_trends) | [YouTube Trends] Р—Р°РїСЂРѕСЃ: site:youtube.com/watch PWGooD СЃРјРѕС‚СЂРµС‚СЊ
+2026-04-14 22:13:55,225 | INFO | Thread-41 (process_youtube_trends) | [YouTube Trends] РЎС‹СЂС‹С… СЂРµР·СѓР»СЊС‚Р°С‚РѕРІ: 6
+2026-04-14 22:13:55,226 | INFO | Thread-41 (process_youtube_trends) | [YouTube Trends] Р—Р°РїСЂРѕСЃ: site:youtube.com/watch PWGooD РІРёРґРµРѕ
+2026-04-14 22:13:57,302 | INFO | Thread-41 (process_youtube_trends) | [YouTube Trends] РЎС‹СЂС‹С… СЂРµР·СѓР»СЊС‚Р°С‚РѕРІ: 14
+2026-04-14 22:13:58,562 | INFO | Thread-41 (process_youtube_trends) | [YouTube Trends] Р’РёРґРµРѕ: P90X Results & Raw Vegan Diet 90 Days Female Body ... (Views: 565983, Score: 79.5)
+2026-04-14 22:13:58,605 | INFO | Thread-41 (process_youtube_trends) | [YouTube Trends] РџСЂРѕРїСѓС‰РµРЅРѕ (РґР»РёС‚РµР»СЊРЅРѕСЃС‚СЊ): "Rugrats" Theme Song (HQ) | Episode Opening Credit
+2026-04-14 22:13:58,607 | INFO | Thread-41 (process_youtube_trends) | [YouTube Trends] Проход 5/5 | Собрано 20/66 | x10
+2026-04-14 22:13:58,607 | INFO | Thread-41 (process_youtube_trends) | [YouTube Trends] Р—Р°РїСЂРѕСЃ: site:youtube.com/watch PWGooD
+2026-04-14 22:14:02,277 | INFO | Thread-41 (process_youtube_trends) | [YouTube Trends] РЎС‹СЂС‹С… СЂРµР·СѓР»СЊС‚Р°С‚РѕРІ: 6
+2026-04-14 22:14:03,198 | INFO | Thread-41 (process_youtube_trends) | [YouTube Trends] Р’РёРґРµРѕ: Пугод на самом деле батон, а не кот!!! || МаинШилд... (Views: 27655, Score: 54.5)
+2026-04-14 22:14:03,597 | INFO | Thread-41 (process_youtube_trends) | [YouTube Trends] Р’РёРґРµРѕ: PWGOODсмотрит: ТЮЛЬПАНОМАНИЯ - МУДРЕНЫЧ... - YouTu... (Views: 190, Score: 22.1)
+2026-04-14 22:14:06,973 | INFO | Thread-41 (process_youtube_trends) | [YouTube Trends] РџСЂРѕРїСѓС‰РµРЅРѕ (РґР»РёС‚РµР»СЊРЅРѕСЃС‚СЊ): PWGood(AI Cover | Dead Blonde) - Снег растаял на..
+2026-04-14 22:14:06,973 | INFO | Thread-41 (process_youtube_trends) | [YouTube Trends] Р—Р°РїСЂРѕСЃ: site:youtube.com/watch PWGooD СЃРјРѕС‚СЂРµС‚СЊ
+2026-04-14 22:14:09,154 | INFO | Thread-41 (process_youtube_trends) | [YouTube Trends] РЎС‹СЂС‹С… СЂРµР·СѓР»СЊС‚Р°С‚РѕРІ: 6
+2026-04-14 22:14:10,078 | INFO | Thread-41 (process_youtube_trends) | [YouTube Trends] РџСЂРѕРїСѓС‰РµРЅРѕ (РґР»РёС‚РµР»СЊРЅРѕСЃС‚СЊ): PWGoodреакция | ЗАКОПАЛ ИГРОКОВ в ПОДВАЛЕ - YouTub
+2026-04-14 22:14:10,081 | INFO | Thread-41 (process_youtube_trends) | [YouTube Trends] Р—Р°РїСЂРѕСЃ: site:youtube.com/watch PWGooD РІРёРґРµРѕ
+2026-04-14 22:14:11,990 | INFO | Thread-41 (process_youtube_trends) | [YouTube Trends] РЎС‹СЂС‹С… СЂРµР·СѓР»СЊС‚Р°С‚РѕРІ: 9
+2026-04-14 22:14:13,361 | INFO | Thread-41 (process_youtube_trends) | [YouTube Trends] РџСЂРѕРїСѓС‰РµРЅРѕ (РґР»РёС‚РµР»СЊРЅРѕСЃС‚СЊ): PWGood- Я бью женщин и детей (AI Cover) - YouTube
+2026-04-14 22:14:13,363 | INFO | Thread-41 (process_youtube_trends) | [YouTube Trends] РС‚РѕРіРѕ: 22 РІРёРґРµРѕ

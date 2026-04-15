@@ -50,8 +50,7 @@ echo.
 
 REM 4) Playwright browser
 echo [INFO] Checking Playwright Chromium...
-python -c "from playwright.sync_api import sync_playwright; p=sync_playwright().start(); b=p.chromium.launch(headless=True); b.close(); p.stop()" >nul 2>&1
-if errorlevel 1 (
+if not exist "%USERPROFILE%\\AppData\\Local\\ms-playwright\\chromium-*" (
     echo [INFO] Installing Playwright Chromium...
     python -m playwright install chromium
     if errorlevel 1 (
@@ -100,7 +99,7 @@ echo.
 
 REM 7) Vision model (qwen3-vl or llava)
 echo [INFO] Checking vision model...
-python -c "import requests,sys; r=requests.get('http://localhost:11434/api/tags',timeout=10); models=r.json().get('models', []); vision=[m for m in models if 'qwen' in m.get('name','') or 'llava' in m.get('name','')]; sys.exit(0 if vision else 1)" >nul 2>&1
+python -c "import requests,sys; r=requests.get('http://localhost:11434/api/tags',timeout=10); models=r.json().get('models', []); vision=[m for m in models if (lambda n: ('llava' in n) or ('-vl' in n) or ('vl-' in n) or ('vision' in n))((m.get('name','') or '').lower())]; sys.exit(0 if vision else 1)" >nul 2>&1
 if errorlevel 1 (
     echo [INFO] Vision model not found. Pulling qwen3-vl...
     ollama pull qwen3-vl
@@ -138,4 +137,3 @@ echo.
 
 python -m waitress --listen=0.0.0.0:5000 --threads=%MAX_WORKERS% modules.main.python.app:app
 pause
-

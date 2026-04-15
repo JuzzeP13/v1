@@ -83,7 +83,7 @@ function applyGithubStatusToUi(payload) {
   updateBtn.disabled = isGithubUpdateBusy || !ready || dirty || behind <= 0;
 }
 
-async function checkGithubUpdate(refresh = false) {
+async function checkGithubUpdate(refresh = true) {
   const suffix = refresh ? "?refresh=1" : "";
   setGithubUpdateBusy(true);
   try {
@@ -135,7 +135,7 @@ async function runGithubUpdate() {
       alert("ℹ️ Обновлений не найдено, локальная версия уже актуальна.");
     }
 
-    await checkGithubUpdate(false);
+    await checkGithubUpdate(true);
   } catch (error) {
     setGithubUpdateLog(`Ошибка обновления: ${error}`);
     alert(`❌ Ошибка обновления: ${error}`);
@@ -188,5 +188,5 @@ function banUser(userId) {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-  checkGithubUpdate(false);
+  checkGithubUpdate(true);
 });

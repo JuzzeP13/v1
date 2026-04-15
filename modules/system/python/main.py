@@ -16,11 +16,14 @@ from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from playwright.async_api import async_playwright
 from datetime import datetime
 from pathlib import Path
+from modules.common.python.asyncio_compat import ensure_windows_proactor_event_loop
 
 try:
     from ddgs import DDGS
 except ImportError:
     from duckduckgo_search import DDGS
+
+ensure_windows_proactor_event_loop()
 
 # ──────────────────────────────────────────────
 # КОНФИГ

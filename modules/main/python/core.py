@@ -43,11 +43,14 @@ except ImportError:
 # ИМПОРТ НОВЫХ МОДУЛЕЙ
 # ──────────────────────────────────────────────
 from modules.common.python.config import Config
+from modules.common.python.asyncio_compat import ensure_windows_proactor_event_loop
 from modules.auth.python.models import User, get_db, init_extended_db
 from modules.auth.python.auth import auth_bp, login_required, get_current_user, login_user, logout_user, init_auth
 from modules.auth.python.security import security_middleware, add_security_headers, is_likely_bot
 from modules.chat.python.social_search import search_social_media
 from modules.common.python.i18n import get_i18n, set_language, _
+
+ensure_windows_proactor_event_loop()
 
 # ──────────────────────────────────────────────
 # ПУТИ
