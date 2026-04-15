@@ -8,6 +8,13 @@ echo ============================================================
 echo   TISH SEARCH v4 - Production Mode (Waitress)
 echo ============================================================
 echo.
+set "CHECK_UPDATE_ONLY="
+if /I "%~1"=="--check-update" set "CHECK_UPDATE_ONLY=1"
+if /I "%~1"=="check-update" set "CHECK_UPDATE_ONLY=1"
+if defined CHECK_UPDATE_ONLY (
+    echo [INFO] Mode: check-update only. Only git auto-update block will run.
+    echo.
+)
 
 REM 1) Python
 python --version >nul 2>&1
@@ -33,10 +40,39 @@ echo.
 
 REM 3) Auto-update from git (safe mode)
 echo [INFO] Checking git auto-update...
+set "GIT_READY="
+set "PATH=%PATH%;C:\Program Files\Git\cmd;C:\Program Files\Git\bin;C:\Program Files (x86)\Git\cmd;C:\Program Files (x86)\Git\bin"
 where git >nul 2>&1
 if errorlevel 1 (
-    echo [WARN] Git is not installed. Skipping auto-update.
+    if exist "C:\Program Files\Git\cmd\git.exe" (
+        echo [OK] Git found in Program Files.
+        set "GIT_READY=1"
+    ) else (
+        echo [INFO] Git is not installed. Trying auto-install via winget...
+        winget --version >nul 2>&1
+        if errorlevel 1 (
+            echo [WARN] winget is not available. Skipping auto-update.
+        ) else (
+            winget install --id Git.Git --exact --source winget --silent --accept-package-agreements --accept-source-agreements
+            if errorlevel 1 (
+                echo [WARN] Failed to auto-install Git. Skipping auto-update.
+            ) else (
+                set "PATH=%PATH%;C:\Program Files\Git\cmd;C:\Program Files\Git\bin;C:\Program Files (x86)\Git\cmd;C:\Program Files (x86)\Git\bin"
+                where git >nul 2>&1
+                if errorlevel 1 (
+                    echo [WARN] Git installed but not visible in current session. Restart terminal and rerun.
+                ) else (
+                    echo [OK] Git installed.
+                    set "GIT_READY=1"
+                )
+            )
+        )
+    )
 ) else (
+    set "GIT_READY=1"
+)
+
+if defined GIT_READY (
     git rev-parse --is-inside-work-tree >nul 2>&1
     if errorlevel 1 (
         echo [WARN] Current folder is not a git repository. Skipping auto-update.
@@ -61,8 +97,14 @@ if errorlevel 1 (
             )
         )
     )
+) else (
+    echo [WARN] Git is unavailable. Auto-update skipped.
 )
 echo.
+if defined CHECK_UPDATE_ONLY (
+    echo [INFO] Check-update mode finished.
+    exit /b 0
+)
 
 REM 4) pip + dependencies
 python -m pip --version >nul 2>&1
@@ -120,29 +162,46 @@ echo.
 
 REM 7) Ollama server
 echo [INFO] Checking Ollama server...
+set "OLLAMA_READY="
 python -c "import requests,sys; sys.exit(0 if requests.get('http://localhost:11434/api/tags',timeout=5).status_code==200 else 1)" >nul 2>&1
 if errorlevel 1 (
     echo [INFO] Ollama server is not running. Starting...
     start "" ollama serve
-    timeout /t 5 /nobreak >nul
+    for /l %%I in (1,1,10) do (
+        if not defined OLLAMA_READY (
+            timeout /t 3 /nobreak >nul
+            python -c "import requests,sys; sys.exit(0 if requests.get('http://localhost:11434/api/tags',timeout=3).status_code==200 else 1)" >nul 2>&1
+            if not errorlevel 1 set "OLLAMA_READY=1"
+        )
+    )
 ) else (
+    set "OLLAMA_READY=1"
+)
+
+if defined OLLAMA_READY (
     echo [OK] Ollama server is running.
+) else (
+    echo [WARN] Ollama server did not start. Continuing without model pull.
 )
 echo.
 
 REM 8) Vision model (always llava)
-echo [INFO] Checking llava model...
-python -c "import requests,sys; r=requests.get('http://localhost:11434/api/tags',timeout=10); models=r.json().get('models', []); names=[(m.get('name','') or '').lower() for m in models]; has_llava=any(('llava' in n) for n in names); sys.exit(0 if has_llava else 1)" >nul 2>&1
-if errorlevel 1 (
-    echo [INFO] LLaVA not found. Pulling llava:latest...
-    ollama pull llava:latest
-    if errorlevel 1 (
-        echo [ERROR] Failed to pull llava model.
-        pause
-        exit /b 1
-    )
+if not defined OLLAMA_READY (
+    echo [WARN] Skipping llava check because Ollama server is unavailable.
 ) else (
-    echo [OK] LLaVA model found.
+    echo [INFO] Checking llava model...
+    python -c "import requests,sys; r=requests.get('http://localhost:11434/api/tags',timeout=10); models=r.json().get('models', []); names=[(m.get('name','') or '').lower() for m in models]; has_llava=any(('llava' in n) for n in names); sys.exit(0 if has_llava else 1)" >nul 2>&1
+    if errorlevel 1 (
+        echo [INFO] LLaVA not found. Pulling llava:latest...
+        ollama pull llava:latest
+        if errorlevel 1 (
+            echo [ERROR] Failed to pull llava model.
+            pause
+            exit /b 1
+        )
+    ) else (
+        echo [OK] LLaVA model found.
+    )
 )
 echo.
 
