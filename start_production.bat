@@ -31,7 +31,40 @@ if not exist .env (
 echo [OK] .env found.
 echo.
 
-REM 3) pip + dependencies
+REM 3) Auto-update from git (safe mode)
+echo [INFO] Checking git auto-update...
+where git >nul 2>&1
+if errorlevel 1 (
+    echo [WARN] Git is not installed. Skipping auto-update.
+) else (
+    git rev-parse --is-inside-work-tree >nul 2>&1
+    if errorlevel 1 (
+        echo [WARN] Current folder is not a git repository. Skipping auto-update.
+    ) else (
+        set "GIT_DIRTY="
+        for /f %%i in ('git status --porcelain 2^>nul') do set "GIT_DIRTY=1"
+
+        if defined GIT_DIRTY (
+            echo [WARN] Local changes detected. Skipping auto-update to avoid conflicts.
+        ) else (
+            git rev-parse --abbrev-ref --symbolic-full-name @{u} >nul 2>&1
+            if errorlevel 1 (
+                echo [WARN] Upstream branch is not configured. Skipping auto-update.
+            ) else (
+                echo [INFO] Pulling latest changes...
+                git pull --ff-only
+                if errorlevel 1 (
+                    echo [WARN] Git auto-update failed. Continuing with current code.
+                ) else (
+                    echo [OK] Repository is up to date.
+                )
+            )
+        )
+    )
+)
+echo.
+
+REM 4) pip + dependencies
 python -m pip --version >nul 2>&1
 if errorlevel 1 (
     echo [INFO] pip is missing. Installing via ensurepip...
@@ -48,7 +81,7 @@ if errorlevel 1 (
 echo [OK] Dependencies are ready.
 echo.
 
-REM 4) Playwright browser
+REM 5) Playwright browser
 echo [INFO] Checking Playwright Chromium...
 if not exist "%USERPROFILE%\\AppData\\Local\\ms-playwright\\chromium-*" (
     echo [INFO] Installing Playwright Chromium...
@@ -62,7 +95,7 @@ if not exist "%USERPROFILE%\\AppData\\Local\\ms-playwright\\chromium-*" (
 echo [OK] Playwright is ready.
 echo.
 
-REM 5) Ollama binary
+REM 6) Ollama binary
 echo [INFO] Checking Ollama...
 where ollama >nul 2>&1
 if errorlevel 1 (
@@ -85,7 +118,7 @@ if errorlevel 1 (
 echo [OK] Ollama found.
 echo.
 
-REM 6) Ollama server
+REM 7) Ollama server
 echo [INFO] Checking Ollama server...
 python -c "import requests,sys; sys.exit(0 if requests.get('http://localhost:11434/api/tags',timeout=5).status_code==200 else 1)" >nul 2>&1
 if errorlevel 1 (
@@ -97,7 +130,7 @@ if errorlevel 1 (
 )
 echo.
 
-REM 7) Vision model (always llava)
+REM 8) Vision model (always llava)
 echo [INFO] Checking llava model...
 python -c "import requests,sys; r=requests.get('http://localhost:11434/api/tags',timeout=10); models=r.json().get('models', []); names=[(m.get('name','') or '').lower() for m in models]; has_llava=any(('llava' in n) for n in names); sys.exit(0 if has_llava else 1)" >nul 2>&1
 if errorlevel 1 (
@@ -113,13 +146,13 @@ if errorlevel 1 (
 )
 echo.
 
-REM 8) Load .env values into current shell (for MAX_WORKERS)
+REM 9) Load .env values into current shell (for MAX_WORKERS)
 for /f "usebackq eol=# tokens=1,* delims==" %%A in (".env") do (
     set "%%A=%%B"
 )
 if not defined MAX_WORKERS set "MAX_WORKERS=4"
 
-REM 9) Initialize app resources
+REM 10) Initialize app resources
 echo [INFO] Running app initialization...
 python -m modules.system.python.init_app
 if errorlevel 1 (
