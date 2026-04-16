@@ -207,7 +207,7 @@ def search_urls(
             # Если просто строка запроса
             normalized_queries.append((item, "Другое"))
     
-    max_passes = 10
+    max_passes = max(2, min(10, int(settings.get("search_max_passes", 10))))
 
     for pass_idx in range(max_passes):
         if state["stop"]:
@@ -411,12 +411,11 @@ def get_niche_queries(city):
 # ──────────────────────────────────────────────
 # СКРИНШОТЫ
 # ──────────────────────────────────────────────
-async def screenshot_one(pw, url: str):
+async def screenshot_one(browser, url: str):
     safe = re.sub(r'[^\w]', '_', url)[:80]
     path = SCREENSHOT_DIR / f"{safe}.png"
-    browser = None
+    ctx = None
     try:
-        browser = await pw.chromium.launch(headless=True)
         ctx = await browser.new_context(
             viewport={"width": 1280, "height": 800},
             user_agent=random.choice(USER_AGENTS),
@@ -434,35 +433,45 @@ async def screenshot_one(pw, url: str):
         )
         # Сокращённый таймаут и быстрая загрузка
         await page.goto(url, timeout=settings["page_timeout"], wait_until="domcontentloaded")
-        # Уменьшена задержка для рендеринга (было 800-1500)
-        await page.wait_for_timeout(random.randint(300, 800))
+        # Адаптивная задержка рендеринга (тюним через hardware auto-tune)
+        wait_min = max(50, int(settings.get("screenshot_wait_min_ms", 300)))
+        wait_max = max(wait_min, int(settings.get("screenshot_wait_max_ms", 800)))
+        await page.wait_for_timeout(random.randint(wait_min, wait_max))
         title = await page.title()
         if is_captcha_page(title, page.url):
-            await browser.close()
             return url, None, "captcha"
         await page.screenshot(path=str(path), full_page=False)
-        await browser.close()
         with open(path, "rb") as f:
             return url, base64.b64encode(f.read()).decode(), "ok"
     except Exception as e:
-        try:
-            if browser: await browser.close()
-        except: pass
         return url, None, str(e)[:60]
+    finally:
+        try:
+            if ctx:
+                await ctx.close()
+        except Exception:
+            pass
 
 async def _batch_async(urls):
     results = {}
     par = settings["parallel"]
     async with async_playwright() as pw:
-        for i in range(0, len(urls), par):
-            if state["stop"]:
-                break
-            batch = urls[i:i+par]
-            done  = await asyncio.gather(*[screenshot_one(pw, u) for u in batch])
-            for url, b64, status in done:
-                results[url] = (b64, status)
-                icon = "✅" if b64 else ("⚠" if status == "captcha" else "❌")
-                emit_status(f"  {icon} {get_domain(url)}")
+        browser = await pw.chromium.launch(headless=True)
+        try:
+            for i in range(0, len(urls), par):
+                if state["stop"]:
+                    break
+                batch = urls[i:i+par]
+                done = await asyncio.gather(*[screenshot_one(browser, u) for u in batch])
+                for url, b64, status in done:
+                    results[url] = (b64, status)
+                    icon = "✅" if b64 else ("⚠" if status == "captcha" else "❌")
+                    emit_status(f"  {icon} {get_domain(url)}")
+        finally:
+            try:
+                await browser.close()
+            except Exception:
+                pass
     return results
 
 def take_screenshots(urls):

@@ -38,6 +38,9 @@ def on_settings(data):
         "page_timeout": (5000, 60000),
         "vision_timeout_sec": (60, 1200),
         "vision_num_predict": (64, 2000),
+        "search_max_passes": (2, 10),
+        "screenshot_wait_min_ms": (50, 5000),
+        "screenshot_wait_max_ms": (50, 7000),
     }
     for k, (min_v, max_v) in limits.items():
         if k not in data:
@@ -47,6 +50,8 @@ def on_settings(data):
             settings[k] = max(min_v, min(max_v, value))
         except Exception:
             pass
+    if settings.get("screenshot_wait_max_ms", 0) < settings.get("screenshot_wait_min_ms", 0):
+        settings["screenshot_wait_max_ms"] = settings["screenshot_wait_min_ms"]
     if "vision_model" in data:
         settings["vision_model"] = data["vision_model"].strip()
     log_event(
@@ -59,6 +64,9 @@ def on_settings(data):
             "page_timeout": settings.get("page_timeout"),
             "vision_timeout_sec": settings.get("vision_timeout_sec"),
             "vision_num_predict": settings.get("vision_num_predict"),
+            "search_max_passes": settings.get("search_max_passes"),
+            "screenshot_wait_min_ms": settings.get("screenshot_wait_min_ms"),
+            "screenshot_wait_max_ms": settings.get("screenshot_wait_max_ms"),
             "vision_model": settings.get("vision_model"),
         },
     )

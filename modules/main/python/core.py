@@ -96,6 +96,9 @@ settings = {
     "page_timeout":  8000,
     "vision_timeout_sec": 180,
     "vision_num_predict": 800,
+    "search_max_passes": 10,
+    "screenshot_wait_min_ms": 300,
+    "screenshot_wait_max_ms": 800,
 }
 
 
@@ -390,6 +393,9 @@ def get_runtime_settings_payload():
             "vision_model": settings.get("vision_model"),
             "vision_timeout_sec": settings.get("vision_timeout_sec"),
             "vision_num_predict": settings.get("vision_num_predict"),
+            "search_max_passes": settings.get("search_max_passes"),
+            "screenshot_wait_min_ms": settings.get("screenshot_wait_min_ms"),
+            "screenshot_wait_max_ms": settings.get("screenshot_wait_max_ms"),
         },
         "hardware": dict(HARDWARE_PROFILE),
     }
@@ -409,22 +415,28 @@ def apply_hardware_auto_tune():
     # Conservative defaults for slower CPUs/iGPU, aggressive for stronger systems.
     tier_defaults = {
         "low": {
-            "max_large": 12,
-            "max_niche": 12,
+            "max_large": 8,
+            "max_niche": 8,
             "max_per_query": 2,
             "parallel": 2,
-            "page_timeout": 12000,
-            "vision_timeout_sec": 420,
-            "vision_num_predict": 320,
+            "page_timeout": 10000,
+            "vision_timeout_sec": 300,
+            "vision_num_predict": 220,
+            "search_max_passes": 5,
+            "screenshot_wait_min_ms": 150,
+            "screenshot_wait_max_ms": 350,
         },
         "laptop_safe": {
-            "max_large": 14,
-            "max_niche": 14,
+            "max_large": 10,
+            "max_niche": 10,
             "max_per_query": 2,
             "parallel": 2,
-            "page_timeout": 14000,
-            "vision_timeout_sec": 540,
-            "vision_num_predict": 260,
+            "page_timeout": 11000,
+            "vision_timeout_sec": 320,
+            "vision_num_predict": 240,
+            "search_max_passes": 6,
+            "screenshot_wait_min_ms": 180,
+            "screenshot_wait_max_ms": 420,
         },
         "medium": {
             "max_large": 20,
@@ -434,6 +446,9 @@ def apply_hardware_auto_tune():
             "page_timeout": 10000,
             "vision_timeout_sec": 360,
             "vision_num_predict": 520,
+            "search_max_passes": 8,
+            "screenshot_wait_min_ms": 220,
+            "screenshot_wait_max_ms": 520,
         },
         "high": {
             "max_large": 30,
@@ -443,6 +458,9 @@ def apply_hardware_auto_tune():
             "page_timeout": 8000,
             "vision_timeout_sec": 300,
             "vision_num_predict": 760,
+            "search_max_passes": 10,
+            "screenshot_wait_min_ms": 250,
+            "screenshot_wait_max_ms": 600,
         },
         "ultra": {
             "max_large": 40,
@@ -452,6 +470,9 @@ def apply_hardware_auto_tune():
             "page_timeout": 7000,
             "vision_timeout_sec": 240,
             "vision_num_predict": 900,
+            "search_max_passes": 10,
+            "screenshot_wait_min_ms": 300,
+            "screenshot_wait_max_ms": 700,
         },
     }
 
@@ -485,6 +506,12 @@ def apply_hardware_auto_tune():
     tuned["vision_num_predict"] = _read_env_int("TISH_VISION_NUM_PREDICT", tuned["vision_num_predict"])
     tuned["parallel"] = _read_env_int("TISH_PARALLEL_SHOTS", tuned["parallel"])
     tuned["parallel"] = max(1, min(10, tuned["parallel"]))
+    tuned["search_max_passes"] = max(2, min(10, _read_env_int("TISH_SEARCH_MAX_PASSES", tuned["search_max_passes"])))
+    tuned["screenshot_wait_min_ms"] = max(50, _read_env_int("TISH_SCREENSHOT_WAIT_MIN_MS", tuned["screenshot_wait_min_ms"]))
+    tuned["screenshot_wait_max_ms"] = max(
+        tuned["screenshot_wait_min_ms"],
+        _read_env_int("TISH_SCREENSHOT_WAIT_MAX_MS", tuned["screenshot_wait_max_ms"]),
+    )
 
     settings.update(tuned)
 
@@ -505,7 +532,9 @@ def apply_hardware_auto_tune():
         f"CPU_NAME={profile.get('cpu_name') or 'unknown'} | "
         f"RAM={profile['ram_total_gb']}GB | GPU={', '.join(profile['gpu_names']) or 'unknown'} | "
         f"parallel={settings['parallel']} | page_timeout={settings['page_timeout']} | "
-        f"vision_timeout={settings['vision_timeout_sec']} | num_predict={settings['vision_num_predict']}"
+        f"vision_timeout={settings['vision_timeout_sec']} | num_predict={settings['vision_num_predict']} | "
+        f"search_passes={settings['search_max_passes']} | "
+        f"shot_wait={settings['screenshot_wait_min_ms']}-{settings['screenshot_wait_max_ms']}ms"
     )
 
 
