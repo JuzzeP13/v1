@@ -1,6 +1,7 @@
 @echo off
 setlocal EnableExtensions
 chcp 65001 >nul
+cd /d "%~dp0"
 title TISH SEARCH v4 - Production Mode
 cls
 
@@ -73,9 +74,15 @@ if errorlevel 1 (
 )
 
 if defined GIT_READY (
+    if not exist ".git" (
+        echo [WARN] .git folder is missing in "%CD%".
+        echo [WARN] Auto-update works only in a cloned git repository.
+        echo [WARN] If this folder was copied/archived, use: git clone ^<repo_url^>
+        goto :after_git_update
+    )
     git rev-parse --is-inside-work-tree >nul 2>&1
     if errorlevel 1 (
-        echo [WARN] Current folder is not a git repository. Skipping auto-update.
+        echo [WARN] Current folder "%CD%" is not a git repository. Skipping auto-update.
     ) else (
         set "GIT_DIRTY="
         for /f %%i in ('git status --porcelain 2^>nul') do set "GIT_DIRTY=1"
@@ -100,6 +107,7 @@ if defined GIT_READY (
 ) else (
     echo [WARN] Git is unavailable. Auto-update skipped.
 )
+:after_git_update
 echo.
 if defined CHECK_UPDATE_ONLY (
     echo [INFO] Check-update mode finished.
