@@ -413,11 +413,15 @@ def get_niche_queries(city):
 # ──────────────────────────────────────────────
 async def screenshot_one(browser, url: str):
     safe = re.sub(r'[^\w]', '_', url)[:80]
-    path = SCREENSHOT_DIR / f"{safe}.png"
+    fmt = str(settings.get("screenshot_format", "jpeg")).lower()
+    ext = "jpg" if fmt == "jpeg" else "png"
+    path = SCREENSHOT_DIR / f"{safe}.{ext}"
     ctx = None
     try:
+        width = max(640, int(settings.get("screenshot_width", 1280)))
+        height = max(400, int(settings.get("screenshot_height", 800)))
         ctx = await browser.new_context(
-            viewport={"width": 1280, "height": 800},
+            viewport={"width": width, "height": height},
             user_agent=random.choice(USER_AGENTS),
             locale="ru-RU",
             extra_http_headers={
@@ -440,7 +444,11 @@ async def screenshot_one(browser, url: str):
         title = await page.title()
         if is_captcha_page(title, page.url):
             return url, None, "captcha"
-        await page.screenshot(path=str(path), full_page=False)
+        screenshot_kwargs = {"path": str(path), "full_page": False}
+        if fmt == "jpeg":
+            screenshot_kwargs["type"] = "jpeg"
+            screenshot_kwargs["quality"] = max(40, min(95, int(settings.get("screenshot_quality", 70))))
+        await page.screenshot(**screenshot_kwargs)
         with open(path, "rb") as f:
             return url, base64.b64encode(f.read()).decode(), "ok"
     except Exception as e:
@@ -489,7 +497,8 @@ def parse_vision_response(raw: str):
     Возвращает (design_text, ux_text, design_score, ux_score).
     """
     raw = raw.strip()
-    print(f"[DEBUG PARSE] Исходный ответ:\n{raw}\n")
+    if settings.get("debug_verbose"):
+        print(f"[DEBUG PARSE] Исходный ответ:\n{raw}\n")
 
     design_text = ""
     ux_text = ""
@@ -544,11 +553,57 @@ def parse_vision_response(raw: str):
     design_text = re.sub(r'^[\*\-\#\s]+', '', design_text).strip()
     ux_text = re.sub(r'^[\*\-\#\s]+', '', ux_text).strip()
 
-    print(f"[DEBUG PARSE] Парсированные результаты:")
-    print(f"  DESIGN: {design_score}/10 - {design_text[:150]}...")
-    print(f"  UX: {ux_score}/10 - {ux_text[:150]}...")
+    if settings.get("debug_verbose"):
+        print(f"[DEBUG PARSE] Парсированные результаты:")
+        print(f"  DESIGN: {design_score}/10 - {design_text[:150]}...")
+        print(f"  UX: {ux_score}/10 - {ux_text[:150]}...")
 
     return design_text[:500], ux_text[:500], design_score, ux_score  # Ограничиваем длину
+
+
+def build_vision_prompt(url: str) -> str:
+    prompt_mode = str(settings.get("analysis_prompt_mode", "full")).lower()
+    use_examples = bool(settings.get("use_examples_in_prompt", True))
+
+    if prompt_mode == "turbo":
+        return (
+            f"Оцени скриншот сайта: {url}\n"
+            "Ты строгий UX/UI аудитор. Отвечай очень кратко и по делу.\n"
+            "Верни строго 2 строки в формате:\n"
+            "DESIGN: X/10 Плюсы: ... Минусы: ...\n"
+            "UX: Y/10 Плюсы: ... Минусы: ...\n"
+            "Требования:\n"
+            "- X и Y это целые числа 0-10\n"
+            "- В каждой строке максимум 180 символов\n"
+            "- Если сайт устаревший/плохой, ставь 0-5\n"
+            "- Ответ только на русском"
+        )
+
+    examples_text = ""
+    if use_examples:
+        good_examples = db_get_examples(True)
+        bad_examples = db_get_examples(False)
+        if good_examples:
+            examples_text += "\n\nХОРОШИЕ ПРИМЕРЫ:\n"
+            for eg in good_examples:
+                examples_text += f"- {eg['url']}: Дизайн — {eg['design'][:80]}... UX — {eg['ux'][:80]}...\n"
+        if bad_examples:
+            examples_text += "\nПЛОХИЕ ПРИМЕРЫ:\n"
+            for eg in bad_examples:
+                examples_text += f"- {eg['url']}: Дизайн — {eg['design'][:80]}... UX — {eg['ux'][:80]}...\n"
+
+    return (
+        f"Ты строгий профессиональный критик веб-дизайна. На скриншоте сайт: {url}\n"
+        "Дай честную оценку, без лести.\n\n"
+        "Критерии дизайна: типографика, цвет, иерархия, контраст, современность.\n"
+        "Критерии UX: навигация, читаемость, CTA, адаптивность, обратная связь.\n\n"
+        "Формат ответа строго:\n"
+        "DESIGN: [оценка 0-10] [1-2 плюса и 3-4 минуса]\n"
+        "UX: [оценка 0-10] [1-2 плюса и 3-4 минуса]\n"
+        "Если качество слабое или устаревшее, ставь 0-5. "
+        "Отвечай только на русском языке."
+        + examples_text
+    )
 
 
 # ──────────────────────────────────────────────
@@ -556,72 +611,7 @@ def parse_vision_response(raw: str):
 # ──────────────────────────────────────────────
 def analyze_site(url: str, site_type: str, category: str, b64: str, idx: int, total: int) -> dict:
     emit_status(f"[{idx}/{total}] 🔍 {get_domain(url)} [{category}]", "info")
-
-    # Получаем примеры для контекста
-    good_examples = db_get_examples(True)
-    bad_examples = db_get_examples(False)
-    
-    examples_text = ""
-    if good_examples:
-        examples_text += "\n\nХОРОШИЕ ПРИМЕРЫ:\n"
-        for eg in good_examples:
-            examples_text += f"- {eg['url']}: Дизайн — {eg['design'][:100]}... UX — {eg['ux'][:100]}...\n"
-    if bad_examples:
-        examples_text += "\nПЛОХИЕ ПРИМЕРЫ:\n"
-        for eg in bad_examples:
-            examples_text += f"- {eg['url']}: Дизайн — {eg['design'][:100]}... UX — {eg['ux'][:100]}...\n"
-
-    prompt = (
-        f"Ты ЖЕСТКИЙ профессиональный критик веб-дизайна с 15+ летним опытом. На скриншоте сайт: {url}\n"
-        "Твоя задача — дать ЧЕСТНУЮ, ТРЕБОВАТЕЛЬНУЮ оценку. Не льсти посредственным сайтам!\n\n"
-        
-        "╔══ КРАСНЫЕ ФЛАГИ ПЛОХОГО ДИЗАЙНА (ищи эти косяки) ══╗\n"
-        "🚩 Flash-like мигающие элементы или громкая анимация\n"
-        "🚩 Шрифты меньше 14px или без проекта для основного текста\n"
-        "🚩 Цвета: неконтрастные, неживые, выбитые из палитры\n"
-        "🚩 Огромные блоки текста без отступов (более 80 символов в строке)\n"
-        "🚩 Рваная иерархия — нельзя понять что важное, что нет\n"
-        "🚩 Скучный однообразный дизайн без микроэлементов\n"
-        "🚩 Устаревший/веб 1.0 дизайн (громоздкие кнопки, старые иконки)\n"
-        "🚩 Нарушения доступности: очень бледный текст, отсутствие контраста\n"
-        "🚩 Неправильное использование белого пространства (прижато к краям)\n"
-        "🚩 Масса рекламных блоков или pop-ups портящих эстетику\n\n"
-        
-        "╔══ КРИТЕРИИ СОВРЕМЕННОГО ДИЗАЙНА 2024-2026 ══╗\n"
-        "✅ Минимализм с функциональностью (не просто пусто)\n"
-        "✅ Типография: 16-18px основной текст, четкая иерархия\n"
-        "✅ Цветовая палитра: 2-3 основных цвета + нейтральные фоны\n"
-        "✅ Микроинтерации: плавные переходы, правильная обратная связь\n"
-        "✅ Адаптивный дизайн: смотрится хорошо на всех размерах\n"
-        "✅ Светлый чистый интерфейс с ясной навигацией\n"
-        "✅ Конкретная типография (Montserrat, Inter, Roboto правильно использованы)\n"
-        "✅ Правильные CTA кнопки: заметные, яркие, с правильным контрастом\n"
-        "✅ Иерархия: главное выделено размером, цветом, позицией\n\n"
-        
-        "КРИТЕРИИ ДИЗАЙНА:\n"
-        "1. ТИПОГРАФИЯ: шрифты, размеры, четкость, иерархия\n"
-        "2. КОЛОР: актуальная палитра 2024-2026 или серьёз устаревшая?\n"
-        "3. ИЕРАРХИЯ: легко ли найти главное?\n"
-        "4. КОНТРАСТ: текст читаем или микроскопический?\n"
-        "5. СОВРЕМЕННОСТЬ: это выглядит свежо или как 2010?\n\n"
-        
-        "КРИТЕРИИ UX:\n"
-        "1. НАВИГАЦИЯ: интуитивна ли? Где главное меню?\n"
-        "2. ЧИТАЕМОСТЬ: удобно ли читать? Длинные ли строки?\n"
-        "3. CTA: видны ли кнопки действия? Понятно ли что делать?\n"
-        "4. АДАПТИВНОСТЬ: этот дизайн мобильный? На телефоне читаем?\n"
-        "5. ИНТЕРАКТИВНОСТЬ: есть ли обратная связь при клике?\n\n"
-        
-        "ФОРМАТ ОТВЕТА (СТРОГО!):\n\n"
-        "ДИЗАЙН: [оценка 0-10] [коротко плюсы (максимум 2), потом минусы (минимум 3-4, будь жестче!)]\n"
-        "UX: [оценка 0-10] [коротко плюсы (максимум 2), потом минусы (минимум 3-4)]\n\n"
-        "Например:\n"
-        "ДИЗАЙН: 3/10 Плюсы: чистый, минималистичный. Минусы: очень устаревший дизайн 2000х годов, микроскопический шрифт 12px, ужасный контраст, нет иерархии\n"
-        "UX: 2/10 Плюсы: быстро загружается. Минусы: непонятная навигация, нет кнопок действия, текст сливается с фоном, совсем не мобильный\n\n"
-        "🔥 ГЛАВНОЕ: Если дизайн выглядит плохо или устаревший — ГОВОРИ ЧТО ВЫГЛЯДИТ ПЛОХО!\n"
-        "Давай честные оценки! Не льсти посредственности! Если плохо - ставь 0-5 баллов!\n"
-        "Отвечай ТОЛЬКО на русском языке." + examples_text
-    )
+    prompt = build_vision_prompt(url)
 
     raw = call_vision(prompt, b64)
     design, ux, design_score, ux_score = parse_vision_response(raw)
@@ -830,11 +820,12 @@ def process_city(city: str, is_recheck: bool = False):
 
     # 4. Сохранение в БД и Excel
     valid = [r for r in state["results"] if not r["design"].startswith("Пропущено")]
-    print(f"[DEBUG process_city] Всего результатов: {len(state['results'])}")
-    print(f"[DEBUG process_city] Валидных для сохранения: {len(valid)}")
-    for i, r in enumerate(state["results"]):
-        starts_with_skip = r["design"].startswith("Пропущено")
-        print(f"[DEBUG process_city] [{i}] {get_domain(r['url'])} | design='{r['design'][:40]}...' | пропущен={starts_with_skip}")
+    if settings.get("debug_verbose"):
+        print(f"[DEBUG process_city] Всего результатов: {len(state['results'])}")
+        print(f"[DEBUG process_city] Валидных для сохранения: {len(valid)}")
+        for i, r in enumerate(state["results"]):
+            starts_with_skip = r["design"].startswith("Пропущено")
+            print(f"[DEBUG process_city] [{i}] {get_domain(r['url'])} | design='{r['design'][:40]}...' | пропущен={starts_with_skip}")
     
     if valid:
         db_save(city, valid)
@@ -842,7 +833,8 @@ def process_city(city: str, is_recheck: bool = False):
         emit_status(f"💾 Сохранено в БД: {len(valid)} сайтов", "success")
         socketio.emit("done", {"city": city, "count": len(valid)}, room=state.get("active_sid"))
     else:
-        print(f"[DEBUG process_city] ВНИМАНИЕ: Нет валидных результатов для сохранения!")
+        if settings.get("debug_verbose"):
+            print(f"[DEBUG process_city] ВНИМАНИЕ: Нет валидных результатов для сохранения!")
         emit_status(f"⚠️ Нет валидных результатов для сохранения (может быть ошибка анализа)", "warn")
 
     s = state["elapsed_sec"]

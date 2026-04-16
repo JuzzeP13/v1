@@ -99,6 +99,13 @@ settings = {
     "search_max_passes": 10,
     "screenshot_wait_min_ms": 300,
     "screenshot_wait_max_ms": 800,
+    "screenshot_width": 1280,
+    "screenshot_height": 800,
+    "screenshot_format": "jpeg",
+    "screenshot_quality": 70,
+    "analysis_prompt_mode": "full",
+    "use_examples_in_prompt": True,
+    "debug_verbose": False,
 }
 
 
@@ -143,6 +150,14 @@ def _read_env_bool(name: str, default: bool = False) -> bool:
     if value is None:
         return default
     return str(value).strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _read_env_str(name: str, default: str) -> str:
+    value = os.environ.get(name)
+    if value is None:
+        return default
+    value = str(value).strip()
+    return value or default
 
 
 def _looks_like_generic_cpu_name(value: str) -> bool:
@@ -396,6 +411,11 @@ def get_runtime_settings_payload():
             "search_max_passes": settings.get("search_max_passes"),
             "screenshot_wait_min_ms": settings.get("screenshot_wait_min_ms"),
             "screenshot_wait_max_ms": settings.get("screenshot_wait_max_ms"),
+            "screenshot_width": settings.get("screenshot_width"),
+            "screenshot_height": settings.get("screenshot_height"),
+            "screenshot_format": settings.get("screenshot_format"),
+            "screenshot_quality": settings.get("screenshot_quality"),
+            "analysis_prompt_mode": settings.get("analysis_prompt_mode"),
         },
         "hardware": dict(HARDWARE_PROFILE),
     }
@@ -421,10 +441,16 @@ def apply_hardware_auto_tune():
             "parallel": 2,
             "page_timeout": 10000,
             "vision_timeout_sec": 300,
-            "vision_num_predict": 220,
+            "vision_num_predict": 170,
             "search_max_passes": 5,
             "screenshot_wait_min_ms": 150,
             "screenshot_wait_max_ms": 350,
+            "screenshot_width": 960,
+            "screenshot_height": 600,
+            "screenshot_format": "jpeg",
+            "screenshot_quality": 55,
+            "analysis_prompt_mode": "turbo",
+            "use_examples_in_prompt": False,
         },
         "laptop_safe": {
             "max_large": 10,
@@ -433,10 +459,16 @@ def apply_hardware_auto_tune():
             "parallel": 2,
             "page_timeout": 11000,
             "vision_timeout_sec": 320,
-            "vision_num_predict": 240,
+            "vision_num_predict": 180,
             "search_max_passes": 6,
             "screenshot_wait_min_ms": 180,
             "screenshot_wait_max_ms": 420,
+            "screenshot_width": 1024,
+            "screenshot_height": 640,
+            "screenshot_format": "jpeg",
+            "screenshot_quality": 60,
+            "analysis_prompt_mode": "turbo",
+            "use_examples_in_prompt": False,
         },
         "medium": {
             "max_large": 20,
@@ -449,6 +481,12 @@ def apply_hardware_auto_tune():
             "search_max_passes": 8,
             "screenshot_wait_min_ms": 220,
             "screenshot_wait_max_ms": 520,
+            "screenshot_width": 1200,
+            "screenshot_height": 760,
+            "screenshot_format": "jpeg",
+            "screenshot_quality": 65,
+            "analysis_prompt_mode": "full",
+            "use_examples_in_prompt": True,
         },
         "high": {
             "max_large": 30,
@@ -461,6 +499,12 @@ def apply_hardware_auto_tune():
             "search_max_passes": 10,
             "screenshot_wait_min_ms": 250,
             "screenshot_wait_max_ms": 600,
+            "screenshot_width": 1280,
+            "screenshot_height": 800,
+            "screenshot_format": "png",
+            "screenshot_quality": 80,
+            "analysis_prompt_mode": "full",
+            "use_examples_in_prompt": True,
         },
         "ultra": {
             "max_large": 40,
@@ -473,6 +517,12 @@ def apply_hardware_auto_tune():
             "search_max_passes": 10,
             "screenshot_wait_min_ms": 300,
             "screenshot_wait_max_ms": 700,
+            "screenshot_width": 1366,
+            "screenshot_height": 900,
+            "screenshot_format": "png",
+            "screenshot_quality": 85,
+            "analysis_prompt_mode": "full",
+            "use_examples_in_prompt": True,
         },
     }
 
@@ -512,6 +562,15 @@ def apply_hardware_auto_tune():
         tuned["screenshot_wait_min_ms"],
         _read_env_int("TISH_SCREENSHOT_WAIT_MAX_MS", tuned["screenshot_wait_max_ms"]),
     )
+    tuned["screenshot_width"] = max(640, min(1920, _read_env_int("TISH_SCREENSHOT_WIDTH", tuned["screenshot_width"])))
+    tuned["screenshot_height"] = max(400, min(1200, _read_env_int("TISH_SCREENSHOT_HEIGHT", tuned["screenshot_height"])))
+    screenshot_format = _read_env_str("TISH_SCREENSHOT_FORMAT", str(tuned.get("screenshot_format", "jpeg"))).lower()
+    tuned["screenshot_format"] = screenshot_format if screenshot_format in {"jpeg", "png"} else "jpeg"
+    tuned["screenshot_quality"] = max(40, min(95, _read_env_int("TISH_SCREENSHOT_QUALITY", tuned["screenshot_quality"])))
+    prompt_mode = _read_env_str("TISH_ANALYSIS_PROMPT_MODE", str(tuned.get("analysis_prompt_mode", "full"))).lower()
+    tuned["analysis_prompt_mode"] = prompt_mode if prompt_mode in {"full", "turbo"} else "full"
+    tuned["use_examples_in_prompt"] = _read_env_bool("TISH_USE_EXAMPLES_IN_PROMPT", bool(tuned.get("use_examples_in_prompt", True)))
+    tuned["debug_verbose"] = _read_env_bool("TISH_DEBUG_VERBOSE", bool(settings.get("debug_verbose", False)))
 
     settings.update(tuned)
 
@@ -534,7 +593,9 @@ def apply_hardware_auto_tune():
         f"parallel={settings['parallel']} | page_timeout={settings['page_timeout']} | "
         f"vision_timeout={settings['vision_timeout_sec']} | num_predict={settings['vision_num_predict']} | "
         f"search_passes={settings['search_max_passes']} | "
-        f"shot_wait={settings['screenshot_wait_min_ms']}-{settings['screenshot_wait_max_ms']}ms"
+        f"shot_wait={settings['screenshot_wait_min_ms']}-{settings['screenshot_wait_max_ms']}ms | "
+        f"shot={settings['screenshot_width']}x{settings['screenshot_height']} {settings['screenshot_format']} q{settings['screenshot_quality']} | "
+        f"prompt={settings['analysis_prompt_mode']}"
     )
 
 
@@ -892,14 +953,16 @@ def db_has_domain(domain: str) -> bool:
 def db_save(city: str, results: list):
     """Сохраняет ТОЛЬКО сайты с плохим дизайном/UX (нуждающиеся в переделке)"""
     now = datetime.now().isoformat()
-    print(f"[DEBUG db_save] Попытка сохранить {len(results)} результатов для города '{city}'")
+    if settings.get("debug_verbose"):
+        print(f"[DEBUG db_save] Попытка сохранить {len(results)} результатов для города '{city}'")
     saved_count = 0
     skipped_count = 0
     
     with sqlite3.connect(DB_PATH) as con:
         for r in results:
             if r["design"].startswith("Пропущено"):
-                print(f"[DEBUG db_save] Пропущен: {r['url']} (design начинается с 'Пропущено')")
+                if settings.get("debug_verbose"):
+                    print(f"[DEBUG db_save] Пропущен: {r['url']} (design начинается с 'Пропущено')")
                 skipped_count += 1
                 continue
             
@@ -911,8 +974,9 @@ def db_save(city: str, results: list):
             needs_redesign = design_score <= 5 or ux_score <= 5
             
             if not needs_redesign:
-                print(f"[DEBUG db_save] ⏭ Пропущен (хороший дизайн): {get_domain(r['url'])} "
-                      f"[Дизайн: {design_score}/10, UX: {ux_score}/10]")
+                if settings.get("debug_verbose"):
+                    print(f"[DEBUG db_save] ⏭ Пропущен (хороший дизайн): {get_domain(r['url'])} "
+                          f"[Дизайн: {design_score}/10, UX: {ux_score}/10]")
                 skipped_count += 1
                 continue
             
@@ -929,16 +993,19 @@ def db_save(city: str, results: list):
                 
                 saved_count += 1
                 emoji = "🔴" if design_score <= 3 or ux_score <= 3 else "🟠"  # критичные vs обычные плохие
-                print(f"[DEBUG db_save] {emoji} Сохранён: {domain} "
-                      f"[Дизайн: {design_score}/10, UX: {ux_score}/10] - НУЖНА ПЕРЕДЕЛКА!")
+                if settings.get("debug_verbose"):
+                    print(f"[DEBUG db_save] {emoji} Сохранён: {domain} "
+                          f"[Дизайн: {design_score}/10, UX: {ux_score}/10] - НУЖНА ПЕРЕДЕЛКА!")
             except Exception as e:
-                print(f"[DEBUG db_save] ✗ ОШИБКА при сохранении {r['url']}: {e}")
+                if settings.get("debug_verbose"):
+                    print(f"[DEBUG db_save] ✗ ОШИБКА при сохранении {r['url']}: {e}")
         
         con.commit()
     
-    print(f"[DEBUG db_save] Итого для города '{city}': "
-          f"сохранено {saved_count} (нуждаются в переделке) | "
-          f"пропущено {skipped_count} (уже хороший дизайн)")
+    if settings.get("debug_verbose"):
+        print(f"[DEBUG db_save] Итого для города '{city}': "
+              f"сохранено {saved_count} (нуждаются в переделке) | "
+              f"пропущено {skipped_count} (уже хороший дизайн)")
 
 def db_all() -> list:
     with sqlite3.connect(DB_PATH) as con:
@@ -1304,7 +1371,8 @@ def call_vision(prompt: str, image_b64: str) -> str:
         r.raise_for_status()
         
         resp = r.json()
-        print(f"[DEBUG] API ответ: {resp}")  # Логирование для отладки
+        if settings.get("debug_verbose"):
+            print(f"[DEBUG] API ответ: {resp}")
         
         if "message" in resp:
             msg = resp["message"]
@@ -1316,7 +1384,8 @@ def call_vision(prompt: str, image_b64: str) -> str:
                 content = msg.get("thinking", "").strip()
             
             if content:
-                print(f"[DEBUG] Получен ответ: {content[:200]}")
+                if settings.get("debug_verbose"):
+                    print(f"[DEBUG] Получен ответ: {content[:200]}")
                 log_event(
                     "vision_request_success",
                     request_id=request_id,
@@ -1325,7 +1394,8 @@ def call_vision(prompt: str, image_b64: str) -> str:
                 )
                 return content
         
-        print(f"[DEBUG] Неожиданный формат ответа: {resp}")
+        if settings.get("debug_verbose"):
+            print(f"[DEBUG] Неожиданный формат ответа: {resp}")
         log_event(
             "vision_request_empty_response",
             level="warn",
@@ -1338,7 +1408,8 @@ def call_vision(prompt: str, image_b64: str) -> str:
         
     except req.exceptions.Timeout:
         msg = f"Timeout: модель долго обрабатывает. Проверь модель {settings['vision_model']}"
-        print(f"[DEBUG] {msg}")
+        if settings.get("debug_verbose"):
+            print(f"[DEBUG] {msg}")
         log_event(
             "vision_request_timeout",
             level="error",
@@ -1352,7 +1423,8 @@ def call_vision(prompt: str, image_b64: str) -> str:
         return msg
     except req.exceptions.ConnectionError as e:
         msg = f"Нет соединения с Ollama по адресу {settings['ollama_url']}"
-        print(f"[DEBUG] {msg}: {e}")
+        if settings.get("debug_verbose"):
+            print(f"[DEBUG] {msg}: {e}")
         log_event(
             "vision_request_connection_error",
             level="error",
@@ -1365,7 +1437,8 @@ def call_vision(prompt: str, image_b64: str) -> str:
         return msg
     except Exception as e:
         msg = f"Ошибка анализа: {str(e)[:100]}"
-        print(f"[DEBUG] {msg}")
+        if settings.get("debug_verbose"):
+            print(f"[DEBUG] {msg}")
         log_event(
             "vision_request_error",
             level="error",
