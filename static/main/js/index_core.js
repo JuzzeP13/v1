@@ -3,7 +3,9 @@ let firstResult = true;
 const chips = {};
 let currentLang = localStorage.getItem("tish-lang") || "ru";
 let translations = {};
+let preferredVisionModel = null;
 const THEME_STORAGE_KEY = "tish-theme";
+const BG_ANIMATION_STORAGE_KEY = "tish-bg-animation-enabled";
 
 const THEME_LABELS = {
   ru: {
@@ -64,7 +66,10 @@ const UI_TEXT = {
     noDescription: "Описание отсутствует",
     noTitle: "Заголовок отсутствует",
     domainTypeLarge: "Крупный",
-    domainTypeNiche: "Нишевый"
+    domainTypeNiche: "Нишевый",
+    bgAnimationLabel: "Фоновая анимация",
+    bgAnimationOn: "Вкл",
+    bgAnimationOff: "Выкл"
   },
   en: {
     appTitle: "TISH SEARCH v4",
@@ -113,7 +118,10 @@ const UI_TEXT = {
     noDescription: "Description is missing",
     noTitle: "Title is missing",
     domainTypeLarge: "Large",
-    domainTypeNiche: "Niche"
+    domainTypeNiche: "Niche",
+    bgAnimationLabel: "Background animation",
+    bgAnimationOn: "On",
+    bgAnimationOff: "Off"
   }
 };
 
@@ -175,6 +183,7 @@ function applyTranslations() {
   // Re-render queue
   renderQueue(window.__lastQueue || [], window.__lastQueueDone || [], window.__lastCurrentCity || "");
   updateThemeToggle();
+  updateBackgroundAnimationToggle();
 }
 
 async function setLanguage(lang) {
@@ -214,6 +223,46 @@ function updateThemeToggle(theme) {
   toggle.title = ariaLabel;
 }
 
+function isBackgroundAnimationEnabled() {
+  return localStorage.getItem(BG_ANIMATION_STORAGE_KEY) !== "0";
+}
+
+function updateBackgroundAnimationToggle() {
+  const checkbox = document.getElementById("s-bg-animation");
+  const label = document.getElementById("bg-animation-label");
+  const state = document.getElementById("bg-animation-state");
+
+  if (label) {
+    label.textContent = uiText("bgAnimationLabel", "Background animation");
+  }
+
+  if (state && checkbox) {
+    state.textContent = checkbox.checked
+      ? uiText("bgAnimationOn", "On")
+      : uiText("bgAnimationOff", "Off");
+  }
+}
+
+function applyBackgroundAnimation(enabled, persist = true) {
+  const nextEnabled = enabled !== false;
+  document.body.classList.toggle("bg-animation-disabled", !nextEnabled);
+
+  const checkbox = document.getElementById("s-bg-animation");
+  if (checkbox) {
+    checkbox.checked = nextEnabled;
+  }
+
+  if (persist) {
+    localStorage.setItem(BG_ANIMATION_STORAGE_KEY, nextEnabled ? "1" : "0");
+  }
+
+  updateBackgroundAnimationToggle();
+}
+
+function initBackgroundAnimationPreference() {
+  applyBackgroundAnimation(isBackgroundAnimationEnabled(), false);
+}
+
 function toggleTheme() {
   const currentTheme = document.body.classList.contains("light-theme") ? "light" : "dark";
   const nextTheme = currentTheme === "light" ? "dark" : "light";
@@ -233,6 +282,45 @@ socket.on("connect", () => {
   loadAvailableModels();
   loadExamples();
   loadSubscriptionInfo();
+});
+
+socket.on("runtime_settings", d => {
+  if (!d || !d.settings) return;
+  const s = d.settings;
+
+  const assignValue = (id, value) => {
+    const input = document.getElementById(id);
+    if (!input || value === undefined || value === null) return;
+    input.value = String(value);
+  };
+
+  assignValue("s-max-large", s.max_large);
+  assignValue("s-max-niche", s.max_niche);
+  assignValue("s-per-query", s.max_per_query);
+  assignValue("s-parallel", s.parallel);
+  assignValue("s-timeout", s.page_timeout);
+
+  if (s.vision_model) {
+    preferredVisionModel = s.vision_model;
+    const select = document.getElementById("s-model");
+    if (select) {
+      const hasOption = Array.from(select.options || []).some(opt => opt.value === preferredVisionModel);
+      if (hasOption) {
+        select.value = preferredVisionModel;
+      }
+    }
+  }
+
+  updateTotalHint();
+
+  if (d.hardware && d.hardware.tier) {
+    const hw = d.hardware;
+    const gpu = (hw.gpu_names || []).join(", ") || "unknown";
+    addLog(
+      `⚙ Автонастройка (${hw.tier}): CPU ${hw.cpu_logical}t, RAM ${hw.ram_total_gb}GB, GPU ${gpu}`,
+      "info"
+    );
+  }
 });
 
 // Автоматический вход через токен главного сайта (если есть в URL)
@@ -391,16 +479,24 @@ socket.on("models_available", d => {
     return;
   }
   
+  let fallback = "";
   models.forEach(model => {
     const opt = document.createElement("option");
     opt.value = model;
     opt.textContent = model;
-    // По умолчанию выбираем LLaVA (быстрее для скриншотов)
-    if (model.includes("llava") || model.includes("qwen") || model.includes("vision")) {
-      opt.selected = true;
+    if (!fallback && (model.includes("llava") || model.includes("qwen") || model.includes("vision"))) {
+      fallback = model;
     }
     select.appendChild(opt);
   });
+
+  if (preferredVisionModel && models.includes(preferredVisionModel)) {
+    select.value = preferredVisionModel;
+  } else if (fallback) {
+    select.value = fallback;
+  } else if (models.length > 0) {
+    select.value = models[0];
+  }
   
   console.log(currentLang === "ru" ? "[OK] Модели загружены:" : "[OK] Models loaded:", models);
 });
@@ -419,16 +515,24 @@ function loadAvailableModels() {
         return;
       }
       
+      let fallback = "";
       models.forEach(model => {
         const opt = document.createElement("option");
         opt.value = model;
         opt.textContent = model;
-        // По умолчанию выбираем LLaVA (быстрее для скриншотов)
-        if (model.includes("llava") || model.includes("qwen") || model.includes("vision")) {
-          opt.selected = true;
+        if (!fallback && (model.includes("llava") || model.includes("qwen") || model.includes("vision"))) {
+          fallback = model;
         }
         select.appendChild(opt);
       });
+
+      if (preferredVisionModel && models.includes(preferredVisionModel)) {
+        select.value = preferredVisionModel;
+      } else if (fallback) {
+        select.value = fallback;
+      } else if (models.length > 0) {
+        select.value = models[0];
+      }
     })
     .catch(e => {
       console.error(`[ERROR] ${currentLang === "ru" ? "Не удалось загрузить модели" : "Failed to load models"}:`, e);
@@ -696,6 +800,10 @@ function reanalyzeCity(city) {
 // ── HELPERS ──
 function addLog(msg, level="info") {
   const log = document.getElementById("log");
+  if (!log) {
+    console.log("[LOG]", msg);
+    return;
+  }
   const e = document.createElement("div");
   e.className = "le " + level;
   e.textContent = msg;
@@ -965,5 +1073,14 @@ if (themeToggleButton) {
   themeToggleButton.addEventListener("click", toggleTheme);
 }
 
+const bgAnimationToggle = document.getElementById("s-bg-animation");
+if (bgAnimationToggle) {
+  bgAnimationToggle.addEventListener("change", (event) => {
+    applyBackgroundAnimation(Boolean(event.target.checked));
+    window.location.reload();
+  });
+}
+
 initTheme();
+initBackgroundAnimationPreference();
 

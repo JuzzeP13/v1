@@ -30,14 +30,38 @@ def on_recheck_db(data):
 @socketio.on("update_settings")
 @socket_login_required
 def on_settings(data):
-    for k in ["max_large", "max_niche", "max_per_query", "parallel", "page_timeout"]:
-        if k in data:
-            try:
-                settings[k] = int(data[k])
-            except Exception:
-                pass
+    limits = {
+        "max_large": (5, 100),
+        "max_niche": (5, 100),
+        "max_per_query": (1, 10),
+        "parallel": (1, 10),
+        "page_timeout": (5000, 60000),
+        "vision_timeout_sec": (60, 1200),
+        "vision_num_predict": (64, 2000),
+    }
+    for k, (min_v, max_v) in limits.items():
+        if k not in data:
+            continue
+        try:
+            value = int(data[k])
+            settings[k] = max(min_v, min(max_v, value))
+        except Exception:
+            pass
     if "vision_model" in data:
         settings["vision_model"] = data["vision_model"].strip()
+    log_event(
+        "settings_updated_from_ui",
+        settings={
+            "max_large": settings.get("max_large"),
+            "max_niche": settings.get("max_niche"),
+            "max_per_query": settings.get("max_per_query"),
+            "parallel": settings.get("parallel"),
+            "page_timeout": settings.get("page_timeout"),
+            "vision_timeout_sec": settings.get("vision_timeout_sec"),
+            "vision_num_predict": settings.get("vision_num_predict"),
+            "vision_model": settings.get("vision_model"),
+        },
+    )
     emit_status(
         f"⚙ Настройки обновлены: до {settings['max_large'] + settings['max_niche']} сайтов на город",
         "success",

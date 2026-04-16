@@ -220,6 +220,11 @@ socket.on("youtube_excel_error", d => {
 // ── HYPERSPACE WEBGL BACKGROUND ──
 const bgCanvas = document.getElementById("starfield");
 const LIGHT_THEME_CLASS = "light-theme";
+const RUNTIME_BG_ANIMATION_STORAGE_KEY = "tish-bg-animation-enabled";
+
+function isRuntimeBackgroundAnimationEnabled() {
+  return localStorage.getItem(RUNTIME_BG_ANIMATION_STORAGE_KEY) !== "0";
+}
 
 function getBgTheme() {
   return document.body.classList.contains(LIGHT_THEME_CLASS) ? "light" : "dark";
@@ -411,7 +416,11 @@ function initCanvasWarpFallback(canvas) {
   requestAnimationFrame(frame);
 }
 
-if (!window.THREE || !bgCanvas) {
+if (!bgCanvas || !isRuntimeBackgroundAnimationEnabled()) {
+  if (bgCanvas) {
+    bgCanvas.style.display = "none";
+  }
+} else if (!window.THREE) {
   console.warn("[HYPERSPACE] Three.js недоступен, запускаю Canvas fallback.");
   initCanvasWarpFallback(bgCanvas);
 } else {

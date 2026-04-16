@@ -77,6 +77,14 @@ def on_connect():
         "queue_done":  state["queue_done"],
         "db_stats":    db_stats(),
     }, room=request.sid)
+    runtime_payload = get_runtime_settings_payload()
+    socketio.emit("runtime_settings", runtime_payload, room=request.sid)
+    log_event(
+        "runtime_settings_sent",
+        sid=request.sid,
+        settings=runtime_payload.get("settings", {}),
+        hardware=runtime_payload.get("hardware", {}),
+    )
     # Отправляем список доступных моделей
     try:
         r = req.get(f"{settings['ollama_url']}/api/tags", timeout=5)
@@ -101,8 +109,17 @@ def on_add(data):
         return
     if city not in state["queue"] and city not in state["queue_done"]:
         state["queue"].append(city)
+        log_event("queue_city_added", city=city, sid=request.sid, queue=list(state["queue"]))
         emit_status(f"➕ Добавлен в очередь: «{city}»", "info")
     else:
+        log_event(
+            "queue_city_add_duplicate",
+            level="warn",
+            city=city,
+            sid=request.sid,
+            queue=list(state["queue"]),
+            queue_done=list(state["queue_done"]),
+        )
         emit_status(f"⚠ «{city}» уже в очереди или обработан", "warn")
     emit_state()
 
@@ -125,6 +142,7 @@ def on_reanalyze(data):
     
     # Добавляем в конец очереди
     state["queue"].append(city)
+    log_event("queue_city_reanalyze_added", city=city, sid=request.sid, queue=list(state["queue"]))
     emit_status(f"🔄 Переанализ добавлен в очередь: «{city}»", "info")
     emit_state()
 
@@ -134,21 +152,39 @@ def on_remove(data):
     city = data.get("city", "")
     if city in state["queue"]:
         state["queue"].remove(city)
+        log_event("queue_city_removed", city=city, sid=request.sid, queue=list(state["queue"]))
         emit_state()
 
 @socketio.on("start_queue")
 @socket_login_required
 @socket_subscription_required
 def on_start():
+    log_event(
+        "queue_start_requested",
+        sid=request.sid,
+        user_id=session.get("user_id"),
+        username=session.get("username"),
+        queue=list(state.get("queue", [])),
+        running=state.get("running"),
+    )
     with state_lock:
         recover_stale_analysis_lock()
         if state["running"]:
+            log_event("queue_start_rejected", level="warn", reason="already_running", sid=request.sid)
             emit_status("Уже работает!", "warn"); return
         if not state["queue"]:
+            log_event("queue_start_rejected", level="warn", reason="empty_queue", sid=request.sid)
             emit_status("Очередь пустая — добавь города!", "warn"); return
         state["queue_done"] = []
         state["running"] = True  # Блокируем сразу
         state["active_sid"] = request.sid
+        log_event(
+            "queue_start_accepted",
+            sid=request.sid,
+            user_id=session.get("user_id"),
+            username=session.get("username"),
+            queue=list(state.get("queue", [])),
+        )
     threading.Thread(
         target=run_queue,
         args=(session.get('user_id'), session.get('username', 'user')),
@@ -160,7 +196,24 @@ def on_start():
 def on_stop():
     if state["running"] and state.get("active_sid") == request.sid:
         state["stop"] = True
+        log_event(
+            "queue_stop_requested",
+            level="warn",
+            sid=request.sid,
+            current_url=state.get("current_url"),
+            phase=state.get("phase"),
+            queue_left=list(state.get("queue", [])),
+            analyzed=len(state.get("results", [])),
+        )
         emit_status("⛔ Остановка...", "warn")
+    else:
+        log_event(
+            "queue_stop_ignored",
+            level="warn",
+            sid=request.sid,
+            running=state.get("running"),
+            active_sid=state.get("active_sid"),
+        )
 
 # ──────────────────────────────────────────────
 # СОЦИАЛЬНЫЕ СЕТИ — обработчики

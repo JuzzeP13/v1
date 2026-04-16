@@ -617,6 +617,27 @@ def analyze_site(url: str, site_type: str, category: str, b64: str, idx: int, to
     raw = call_vision(prompt, b64)
     design, ux, design_score, ux_score = parse_vision_response(raw)
 
+    if isinstance(raw, str) and raw.startswith("Timeout:"):
+        log_event(
+            "site_analysis_timeout",
+            level="error",
+            url=url,
+            domain=get_domain(url),
+            idx=idx,
+            total=total,
+            model=settings.get("vision_model"),
+        )
+    elif isinstance(raw, str) and raw.startswith("Нет соединения"):
+        log_event(
+            "site_analysis_connection_error",
+            level="error",
+            url=url,
+            domain=get_domain(url),
+            idx=idx,
+            total=total,
+            ollama_url=settings.get("ollama_url"),
+        )
+
     # Fallback если ответ не парсится правильно
     if design.startswith("Нет ответа") or design.startswith("Ошибка"):
         design = raw[:300] if raw else "Не удалось проанализировать дизайн"
@@ -624,6 +645,18 @@ def analyze_site(url: str, site_type: str, category: str, b64: str, idx: int, to
     if ux.startswith("Нет"):
         ux = raw[300:600] if len(raw) > 300 else "Не удалось проанализировать UX"
         ux_score = 5  # дефолт
+
+    log_event(
+        "site_analysis_result",
+        url=url,
+        domain=get_domain(url),
+        idx=idx,
+        total=total,
+        category=category,
+        site_type=site_type,
+        design_score=design_score,
+        ux_score=ux_score,
+    )
 
     return {
         "url":           url,
@@ -653,6 +686,14 @@ def process_city(city: str, is_recheck: bool = False):
     })
     
     target_total = settings["max_large"] + settings["max_niche"]
+    log_event(
+        "city_process_start",
+        city=city,
+        is_recheck=is_recheck,
+        target_total=target_total,
+        max_large=settings.get("max_large"),
+        max_niche=settings.get("max_niche"),
+    )
     prefix = "🔄 " if is_recheck else "🏙 "
     goal_msg = (
         f"{prefix}Повторный анализ «{city}»"
@@ -716,9 +757,11 @@ def process_city(city: str, is_recheck: bool = False):
 
     if not all_sites:
         emit_status(f"⚠ Новых сайтов для «{city}» не найдено (возможно все уже в БД)", "warn")
+        log_event("city_process_no_sites", level="warn", city=city, is_recheck=is_recheck)
         return
 
     if state["stop"]:
+        log_event("city_process_stopped_before_analysis", level="warn", city=city, is_recheck=is_recheck)
         return
 
     # 2. Скриншоты
@@ -740,9 +783,25 @@ def process_city(city: str, is_recheck: bool = False):
     emit_status(f"🤖 AI-анализ {total} сайтов...", "info")
     for idx, site in enumerate(all_sites, 1):
         if state["stop"]:
+            log_event(
+                "city_process_stop_break",
+                level="warn",
+                city=city,
+                processed=len(state["results"]),
+                total=total,
+            )
             break
         url  = site["url"]
         state["current_url"] = url
+        log_event(
+            "city_process_site_start",
+            city=city,
+            idx=idx,
+            total=total,
+            url=url,
+            category=site.get("category"),
+            site_type=site.get("type"),
+        )
         emit_state()
 
         b64, status = shots.get(url, (None, "not_found"))
@@ -783,6 +842,14 @@ def process_city(city: str, is_recheck: bool = False):
         f"Проанализировано: {len(valid)} | Пропущено: {state['skipped']}",
         "success"
     )
+    log_event(
+        "city_process_done",
+        city=city,
+        elapsed_sec=s,
+        analyzed_valid=len(valid),
+        analyzed_total=len(state["results"]),
+        skipped=state["skipped"],
+    )
 
 
 # ──────────────────────────────────────────────
@@ -808,20 +875,35 @@ def recover_stale_analysis_lock():
             except RuntimeError:
                 pass
         print("[RECOVERY] Released stale analysis_lock")
+        log_event("analysis_lock_recovered", level="warn")
         return True
     except RuntimeError:
+        log_event("analysis_lock_recover_failed", level="error")
         return False
 
 def run_queue(user_id=None, username="user"):
     # Проверяем что нет другого анализа
     if not analysis_lock.acquire(blocking=False):
         emit_status("⚠️ Анализ уже запущен! Дождитесь завершения.", "warn")
+        log_event(
+            "queue_start_blocked",
+            level="warn",
+            reason="analysis_lock_busy",
+            user_id=user_id,
+            username=username,
+        )
         state["running"] = False
         return
     
     try:
         state["running"] = True
         state["stop"]    = False
+        log_event(
+            "queue_start",
+            user_id=user_id,
+            username=username,
+            queue=list(state.get("queue", [])),
+        )
 
         # Отслеживаем активность
         if user_id:
@@ -832,11 +914,18 @@ def run_queue(user_id=None, username="user"):
         while state["queue"] and not state["stop"]:
             city = state["queue"].pop(0)
             state["queue_done"].append(city)
+            log_event(
+                "queue_city_dequeued",
+                city=city,
+                queue_left=list(state.get("queue", [])),
+                queue_done=list(state.get("queue_done", [])),
+            )
             emit_state()
             try:
                 process_city(city, is_recheck=False)
             except Exception as e:
                 emit_status(f"❌ Ошибка при обработке «{city}»: {e}", "error")
+                log_event("queue_city_error", level="error", city=city, error=str(e))
 
         state.update({
             "running": False, "phase": "done",
@@ -848,8 +937,21 @@ def run_queue(user_id=None, username="user"):
                 f"🎉 Очередь завершена! Всего в БД: {st['total']} сайтов из {st['cities']} городов",
                 "success"
             )
+            log_event(
+                "queue_done",
+                db_total=st.get("total"),
+                db_cities=st.get("cities"),
+                queue_done=list(state.get("queue_done", [])),
+            )
         else:
             emit_status("⛔ Очередь остановлена.", "warn")
+            log_event(
+                "queue_stopped",
+                level="warn",
+                queue_left=list(state.get("queue", [])),
+                queue_done=list(state.get("queue_done", [])),
+                current_url=state.get("current_url"),
+            )
         emit_state()
         state["active_sid"] = None
     finally:
@@ -858,6 +960,7 @@ def run_queue(user_id=None, username="user"):
                 analysis_lock.release()
             except RuntimeError:
                 pass
+        log_event("queue_finally_release_lock", running=state.get("running"), stop=state.get("stop"))
 
 
 # ──────────────────────────────────────────────

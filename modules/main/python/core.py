@@ -18,11 +18,14 @@ import asyncio
 import base64
 import json
 import os
+import platform
 import random
 import re
 import sqlite3
+import subprocess
 import threading
 import time
+import uuid
 import requests as req
 import openpyxl
 from functools import wraps
@@ -39,6 +42,11 @@ try:
 except ImportError:
     from duckduckgo_search import DDGS
 
+try:
+    import psutil
+except ImportError:
+    psutil = None
+
 # ──────────────────────────────────────────────
 # ИМПОРТ НОВЫХ МОДУЛЕЙ
 # ──────────────────────────────────────────────
@@ -49,6 +57,11 @@ from modules.auth.python.auth import auth_bp, login_required, get_current_user, 
 from modules.auth.python.security import security_middleware, add_security_headers, is_likely_bot
 from modules.chat.python.social_search import search_social_media
 from modules.common.python.i18n import get_i18n, set_language, _
+from modules.common.python.full_diagnostics import (
+    diagnostics_log_path,
+    log_event,
+    setup_full_diagnostics,
+)
 
 ensure_windows_proactor_event_loop()
 
@@ -67,6 +80,9 @@ TEMPLATES_DIR = PROJECT_ROOT / "templates"
 DB_PATH     = PROJECT_ROOT / "tish_data.db"
 EXCEL_PATH  = REPORTS_DIR / "tish_results.xlsx"   # единый файл
 
+setup_full_diagnostics(source="modules.main.python.core")
+log_event("diagnostics_log_ready", log_path=str(diagnostics_log_path()))
+
 # ──────────────────────────────────────────────
 # ДЕФОЛТНЫЕ НАСТРОЙКИ (меняются через UI)
 # ──────────────────────────────────────────────
@@ -78,7 +94,422 @@ settings = {
     "max_per_query": 3,
     "parallel":      5,  # Оптимизировано для 20+ пользователей (было 8)
     "page_timeout":  8000,
+    "vision_timeout_sec": 180,
+    "vision_num_predict": 800,
 }
+
+
+HARDWARE_PROFILE = {
+    "tier": "default",
+    "auto_mode": "standard",
+    "cpu_logical": 0,
+    "cpu_physical": 0,
+    "cpu_name": "",
+    "is_laptop_class_cpu": False,
+    "ram_total_gb": 0.0,
+    "ram_available_gb": 0.0,
+    "has_discrete_gpu": False,
+    "gpu_names": [],
+    "gpu_max_vram_gb": 0.0,
+}
+
+
+def _safe_float(value, default=0.0):
+    try:
+        return float(value)
+    except Exception:
+        return default
+
+
+def _safe_int(value, default=0):
+    try:
+        return int(value)
+    except Exception:
+        return default
+
+
+def _read_env_int(name: str, default: int) -> int:
+    value = os.environ.get(name)
+    if value is None:
+        return default
+    return _safe_int(value, default)
+
+
+def _read_env_bool(name: str, default: bool = False) -> bool:
+    value = os.environ.get(name)
+    if value is None:
+        return default
+    return str(value).strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _looks_like_generic_cpu_name(value: str) -> bool:
+    name = (value or "").lower()
+    if not name:
+        return True
+    generic_patterns = (
+        "family",
+        "model",
+        "stepping",
+        "authenticamd",
+        "genuineintel",
+    )
+    return all(token in name for token in generic_patterns[:3]) and any(
+        token in name for token in generic_patterns[3:]
+    )
+
+
+def _detect_windows_cpu_name_from_registry() -> str:
+    try:
+        cmd = [
+            "powershell",
+            "-NoProfile",
+            "-Command",
+            "(Get-ItemProperty 'HKLM:\\HARDWARE\\DESCRIPTION\\System\\CentralProcessor\\0' -Name ProcessorNameString).ProcessorNameString",
+        ]
+        res = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            timeout=5,
+            check=False,
+        )
+        if res.returncode != 0:
+            return ""
+        return (res.stdout or "").strip()
+    except Exception:
+        return ""
+
+
+def _detect_windows_cpu_name() -> str:
+    try:
+        cmd = [
+            "powershell",
+            "-NoProfile",
+            "-Command",
+            "Get-CimInstance Win32_Processor | Select-Object Name | ConvertTo-Json -Compress",
+        ]
+        res = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            timeout=5,
+            check=False,
+        )
+        if res.returncode != 0:
+            return ""
+        raw = (res.stdout or "").strip()
+        if not raw:
+            return ""
+        parsed = json.loads(raw)
+        if isinstance(parsed, list):
+            for item in parsed:
+                if isinstance(item, dict) and item.get("Name"):
+                    detected = str(item.get("Name")).strip()
+                    if detected and not _looks_like_generic_cpu_name(detected):
+                        return detected
+                    fallback = _detect_windows_cpu_name_from_registry()
+                    return fallback or detected
+            return ""
+        if isinstance(parsed, dict):
+            detected = str(parsed.get("Name") or "").strip()
+            if detected and not _looks_like_generic_cpu_name(detected):
+                return detected
+            fallback = _detect_windows_cpu_name_from_registry()
+            return fallback or detected
+        return ""
+    except Exception as e:
+        log_event("hardware_cpu_detect_failed", level="warn", error=str(e))
+        return ""
+
+
+def _is_laptop_class_cpu_name(cpu_name: str) -> bool:
+    name = (cpu_name or "").lower().strip()
+    if not name:
+        return False
+    laptop_tokens = (
+        "mobile",
+        "laptop",
+        "notebook",
+    )
+    if any(token in name for token in laptop_tokens):
+        return True
+
+    suffix_patterns = (
+        r"\b\d{4,5}u\b",
+        r"\b\d{4,5}h\b",
+        r"\b\d{4,5}hs\b",
+        r"\b\d{4,5}hx\b",
+        r"\b\d{4,5}g\d\b",
+    )
+    return any(re.search(pattern, name) for pattern in suffix_patterns)
+
+
+def _detect_windows_gpu_info():
+    names = []
+    max_vram_gb = 0.0
+    has_discrete = False
+    try:
+        cmd = [
+            "powershell",
+            "-NoProfile",
+            "-Command",
+            "Get-CimInstance Win32_VideoController | Select-Object Name,AdapterRAM | ConvertTo-Json -Compress",
+        ]
+        res = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            timeout=5,
+            check=False,
+        )
+        if res.returncode != 0:
+            return names, max_vram_gb, has_discrete
+
+        raw = (res.stdout or "").strip()
+        if not raw:
+            return names, max_vram_gb, has_discrete
+
+        parsed = json.loads(raw)
+        if isinstance(parsed, dict):
+            parsed = [parsed]
+        if not isinstance(parsed, list):
+            return names, max_vram_gb, has_discrete
+
+        discrete_keywords = (
+            "geforce", "rtx", "gtx", "quadro", "tesla", "radeon rx", "radeon pro", "arc ",
+        )
+        integrated_keywords = (
+            "intel", "uhd", "iris", "vega", "radeon graphics", "radeon(tm) graphics",
+        )
+
+        for item in parsed:
+            if not isinstance(item, dict):
+                continue
+            name = str(item.get("Name") or "").strip()
+            if not name:
+                continue
+            names.append(name)
+
+            lname = name.lower()
+            is_integrated = any(token in lname for token in integrated_keywords)
+            is_discrete = any(token in lname for token in discrete_keywords) and not is_integrated
+            if is_discrete:
+                has_discrete = True
+
+            adapter_ram = _safe_float(item.get("AdapterRAM"), 0.0)
+            if adapter_ram > 0:
+                max_vram_gb = max(max_vram_gb, round(adapter_ram / (1024 ** 3), 2))
+    except Exception as e:
+        log_event("hardware_gpu_detect_failed", level="warn", error=str(e))
+
+    return names, max_vram_gb, has_discrete
+
+
+def _detect_hardware_profile():
+    if psutil is None:
+        cpu_logical = _safe_int(os.cpu_count(), 2)
+        cpu_physical = max(1, cpu_logical // 2)
+        ram_total_gb = 8.0
+        ram_available_gb = 4.0
+        log_event("hardware_detect_psutil_missing", level="warn")
+    else:
+        cpu_logical = _safe_int(psutil.cpu_count(logical=True), _safe_int(os.cpu_count(), 2))
+        cpu_physical = _safe_int(psutil.cpu_count(logical=False), max(1, cpu_logical // 2))
+        vm = psutil.virtual_memory()
+        ram_total_gb = round(vm.total / (1024 ** 3), 2)
+        ram_available_gb = round(vm.available / (1024 ** 3), 2)
+
+    cpu_name = platform.processor() or ""
+
+    gpu_names = []
+    gpu_max_vram_gb = 0.0
+    has_discrete_gpu = False
+    if os.name == "nt":
+        detected_cpu_name = _detect_windows_cpu_name()
+        if detected_cpu_name:
+            cpu_name = detected_cpu_name
+        gpu_names, gpu_max_vram_gb, has_discrete_gpu = _detect_windows_gpu_info()
+
+    is_laptop_class_cpu = _is_laptop_class_cpu_name(cpu_name)
+
+    profile = {
+        "tier": "medium",
+        "auto_mode": "standard",
+        "cpu_logical": cpu_logical,
+        "cpu_physical": cpu_physical,
+        "cpu_name": cpu_name,
+        "is_laptop_class_cpu": is_laptop_class_cpu,
+        "ram_total_gb": ram_total_gb,
+        "ram_available_gb": ram_available_gb,
+        "has_discrete_gpu": has_discrete_gpu,
+        "gpu_names": gpu_names,
+        "gpu_max_vram_gb": gpu_max_vram_gb,
+    }
+
+    if ram_total_gb <= 8 or cpu_logical <= 4:
+        profile["tier"] = "low"
+        return profile
+
+    score = 0
+    if cpu_logical >= 12:
+        score += 2
+    elif cpu_logical >= 8:
+        score += 1
+
+    if ram_total_gb >= 24:
+        score += 2
+    elif ram_total_gb >= 16:
+        score += 1
+
+    if has_discrete_gpu:
+        score += 2
+    elif gpu_max_vram_gb >= 3:
+        score += 1
+
+    if score <= 1:
+        tier = "low"
+    elif score <= 3:
+        tier = "medium"
+    elif score <= 5:
+        tier = "high"
+    else:
+        tier = "ultra"
+
+    profile["tier"] = tier
+    return profile
+
+
+def get_runtime_settings_payload():
+    return {
+        "settings": {
+            "max_large": settings.get("max_large"),
+            "max_niche": settings.get("max_niche"),
+            "max_per_query": settings.get("max_per_query"),
+            "parallel": settings.get("parallel"),
+            "page_timeout": settings.get("page_timeout"),
+            "vision_model": settings.get("vision_model"),
+            "vision_timeout_sec": settings.get("vision_timeout_sec"),
+            "vision_num_predict": settings.get("vision_num_predict"),
+        },
+        "hardware": dict(HARDWARE_PROFILE),
+    }
+
+
+def apply_hardware_auto_tune():
+    global HARDWARE_PROFILE
+
+    disabled = (os.environ.get("TISH_DISABLE_HW_AUTOTUNE", "0") or "").strip().lower()
+    if disabled in {"1", "true", "yes"}:
+        log_event("hardware_autotune_disabled", source="env", env_var="TISH_DISABLE_HW_AUTOTUNE")
+        return
+
+    profile = _detect_hardware_profile()
+    tier = profile.get("tier", "medium")
+
+    # Conservative defaults for slower CPUs/iGPU, aggressive for stronger systems.
+    tier_defaults = {
+        "low": {
+            "max_large": 12,
+            "max_niche": 12,
+            "max_per_query": 2,
+            "parallel": 2,
+            "page_timeout": 12000,
+            "vision_timeout_sec": 420,
+            "vision_num_predict": 320,
+        },
+        "laptop_safe": {
+            "max_large": 14,
+            "max_niche": 14,
+            "max_per_query": 2,
+            "parallel": 2,
+            "page_timeout": 14000,
+            "vision_timeout_sec": 540,
+            "vision_num_predict": 260,
+        },
+        "medium": {
+            "max_large": 20,
+            "max_niche": 20,
+            "max_per_query": 3,
+            "parallel": 3,
+            "page_timeout": 10000,
+            "vision_timeout_sec": 360,
+            "vision_num_predict": 520,
+        },
+        "high": {
+            "max_large": 30,
+            "max_niche": 30,
+            "max_per_query": 3,
+            "parallel": 5,
+            "page_timeout": 8000,
+            "vision_timeout_sec": 300,
+            "vision_num_predict": 760,
+        },
+        "ultra": {
+            "max_large": 40,
+            "max_niche": 40,
+            "max_per_query": 4,
+            "parallel": 7,
+            "page_timeout": 7000,
+            "vision_timeout_sec": 240,
+            "vision_num_predict": 900,
+        },
+    }
+
+    force_laptop_safe = _read_env_bool("TISH_FORCE_LAPTOP_SAFE", False)
+    laptop_safe_reason = ""
+    if force_laptop_safe:
+        laptop_safe_reason = "forced_by_env"
+    elif (
+        profile.get("is_laptop_class_cpu")
+        and not profile.get("has_discrete_gpu")
+    ):
+        laptop_safe_reason = "laptop_cpu_and_no_discrete_gpu"
+    elif (
+        not profile.get("has_discrete_gpu")
+        and profile.get("ram_total_gb", 0) <= 16
+        and profile.get("ram_available_gb", 0) < 4
+    ):
+        laptop_safe_reason = "no_discrete_gpu_and_low_available_ram"
+
+    if laptop_safe_reason:
+        profile["auto_mode"] = "laptop_safe"
+        # Не понижаем, если уже выбран более безопасный "low".
+        if tier != "low":
+            tier = "laptop_safe"
+
+    tuned = dict(tier_defaults.get(tier, tier_defaults["medium"]))
+    tuned["parallel"] = max(1, min(10, _safe_int(tuned.get("parallel"), 3)))
+
+    # Env overrides for edge cases without code change.
+    tuned["vision_timeout_sec"] = _read_env_int("TISH_VISION_TIMEOUT_SEC", tuned["vision_timeout_sec"])
+    tuned["vision_num_predict"] = _read_env_int("TISH_VISION_NUM_PREDICT", tuned["vision_num_predict"])
+    tuned["parallel"] = _read_env_int("TISH_PARALLEL_SHOTS", tuned["parallel"])
+    tuned["parallel"] = max(1, min(10, tuned["parallel"]))
+
+    settings.update(tuned)
+
+    profile["tier"] = tier
+    HARDWARE_PROFILE = profile
+    log_event(
+        "hardware_autotune_applied",
+        tier=tier,
+        auto_mode=profile.get("auto_mode", "standard"),
+        laptop_safe_reason=laptop_safe_reason,
+        hardware=profile,
+        tuned=tuned,
+    )
+    print(
+        "[AUTO-TUNE] "
+        f"mode={profile.get('auto_mode', 'standard')} | "
+        f"tier={tier} | CPU={profile['cpu_logical']}t/{profile['cpu_physical']}c | "
+        f"CPU_NAME={profile.get('cpu_name') or 'unknown'} | "
+        f"RAM={profile['ram_total_gb']}GB | GPU={', '.join(profile['gpu_names']) or 'unknown'} | "
+        f"parallel={settings['parallel']} | page_timeout={settings['page_timeout']} | "
+        f"vision_timeout={settings['vision_timeout_sec']} | num_predict={settings['vision_num_predict']}"
+    )
+
+
+apply_hardware_auto_tune()
 
 CAPTCHA_SIGNALS = [
     "checkcaptcha","captcha","robot","blocked","access denied",
@@ -269,6 +700,8 @@ state = {
 # Блокировка для предотвращения одновременного запуска задач
 # Для 20+ пользователей
 state_lock = threading.Lock()
+_STATE_LOG_INTERVAL_SEC = 5
+_last_state_log_ts = 0.0
 
 
 # ──────────────────────────────────────────────
@@ -723,10 +1156,26 @@ def is_captcha_page(title: str, cur_url: str) -> bool:
 # ──────────────────────────────────────────────
 def emit_status(msg, level="info"):
     socketio.emit("status", {"msg": msg, "level": level}, room=state.get("active_sid"))
+    log_event(
+        "status_emit",
+        level=level,
+        msg=msg,
+        phase=state.get("phase"),
+        city=state.get("city"),
+        running=state.get("running"),
+        stop=state.get("stop"),
+        current_url=state.get("current_url"),
+        queue_len=len(state.get("queue", [])),
+        queue_done_len=len(state.get("queue_done", [])),
+        found=len(state.get("found_urls", [])),
+        analyzed=len(state.get("results", [])),
+        active_sid=state.get("active_sid"),
+    )
 
 def emit_state():
+    global _last_state_log_ts
     s = state["elapsed_sec"]
-    socketio.emit("state", {
+    payload = {
         "phase":       state["phase"],
         "city":        state["city"],
         "found":       len(state["found_urls"]),
@@ -740,7 +1189,30 @@ def emit_state():
         "queue":       state["queue"],
         "queue_done":  state["queue_done"],
         "db_stats":    db_stats(),
-    }, room=state.get("active_sid"))
+    }
+    socketio.emit("state", payload, room=state.get("active_sid"))
+
+    now = time.time()
+    if (now - _last_state_log_ts) >= _STATE_LOG_INTERVAL_SEC:
+        _last_state_log_ts = now
+        log_event(
+            "state_snapshot",
+            phase=payload["phase"],
+            city=payload["city"],
+            found=payload["found"],
+            analyzed=payload["analyzed"],
+            total=payload["total"],
+            current_url=payload["current_url"],
+            skipped=payload["skipped"],
+            elapsed_sec=s,
+            running=payload["running"],
+            stop=payload["stopped"],
+            queue=list(payload["queue"]),
+            queue_done=list(payload["queue_done"]),
+            db_total=payload["db_stats"].get("total"),
+            db_cities=payload["db_stats"].get("cities"),
+            active_sid=state.get("active_sid"),
+        )
 
 
 # ──────────────────────────────────────────────
@@ -761,6 +1233,10 @@ threading.Thread(target=_timer, daemon=True).start()
 # OLLAMA — ИСПРАВЛЕННЫЙ vision
 # ──────────────────────────────────────────────
 def call_vision(prompt: str, image_b64: str) -> str:
+    request_id = uuid.uuid4().hex[:12]
+    timeout_sec = max(60, _safe_int(settings.get("vision_timeout_sec"), 180))
+    num_predict = max(64, _safe_int(settings.get("vision_num_predict"), 800))
+    started_at = time.time()
     payload = {
         "model": settings["vision_model"],
         "messages": [{
@@ -771,17 +1247,30 @@ def call_vision(prompt: str, image_b64: str) -> str:
         "stream": False,
         "options": {
             "temperature": 0.3,  # немного повышен для более критичной оценки
-            "num_predict": 800,  # увеличено с 600 для полного анализа
+            "num_predict": num_predict,
             "top_k": 40,
             "top_p": 0.9,
         }
     }
+    log_event(
+        "vision_request_start",
+        request_id=request_id,
+        model=settings["vision_model"],
+        ollama_url=settings["ollama_url"],
+        prompt_chars=len(prompt or ""),
+        image_b64_chars=len(image_b64 or ""),
+        timeout_sec=timeout_sec,
+        num_predict=num_predict,
+        phase=state.get("phase"),
+        current_url=state.get("current_url"),
+        stop=state.get("stop"),
+    )
     try:
         emit_status(f"  🤖 Анализирую с {settings['vision_model']}...", "info")
         
         r = req.post(
             f"{settings['ollama_url']}/api/chat",
-            json=payload, timeout=180
+            json=payload, timeout=timeout_sec
         )
         r.raise_for_status()
         
@@ -799,25 +1288,62 @@ def call_vision(prompt: str, image_b64: str) -> str:
             
             if content:
                 print(f"[DEBUG] Получен ответ: {content[:200]}")
+                log_event(
+                    "vision_request_success",
+                    request_id=request_id,
+                    duration_ms=int((time.time() - started_at) * 1000),
+                    response_chars=len(content),
+                )
                 return content
         
         print(f"[DEBUG] Неожиданный формат ответа: {resp}")
+        log_event(
+            "vision_request_empty_response",
+            level="warn",
+            request_id=request_id,
+            duration_ms=int((time.time() - started_at) * 1000),
+            response_keys=list(resp.keys()),
+        )
         emit_status(f"⚠ Модель ответила пустым ответом", "warn")
         return "Нет ответа от модели"
         
     except req.exceptions.Timeout:
         msg = f"Timeout: модель долго обрабатывает. Проверь модель {settings['vision_model']}"
         print(f"[DEBUG] {msg}")
+        log_event(
+            "vision_request_timeout",
+            level="error",
+            request_id=request_id,
+            duration_ms=int((time.time() - started_at) * 1000),
+            model=settings["vision_model"],
+            current_url=state.get("current_url"),
+            stop=state.get("stop"),
+        )
         emit_status(msg, "error")
         return msg
     except req.exceptions.ConnectionError as e:
         msg = f"Нет соединения с Ollama по адресу {settings['ollama_url']}"
         print(f"[DEBUG] {msg}: {e}")
+        log_event(
+            "vision_request_connection_error",
+            level="error",
+            request_id=request_id,
+            duration_ms=int((time.time() - started_at) * 1000),
+            error=str(e),
+            ollama_url=settings["ollama_url"],
+        )
         emit_status(msg, "error")
         return msg
     except Exception as e:
         msg = f"Ошибка анализа: {str(e)[:100]}"
         print(f"[DEBUG] {msg}")
+        log_event(
+            "vision_request_error",
+            level="error",
+            request_id=request_id,
+            duration_ms=int((time.time() - started_at) * 1000),
+            error=str(e),
+        )
         emit_status(msg, "error")
         return msg
 

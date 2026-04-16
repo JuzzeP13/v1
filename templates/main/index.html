@@ -276,6 +276,13 @@
           <option value="" data-i18n="index.loading_models">Загрузка моделей...</option>
         </select>
       </div>
+      <div class="setting-row setting-row-toggle">
+        <span class="setting-label" id="bg-animation-label">Фоновая анимация</span>
+        <label class="setting-toggle" for="s-bg-animation">
+          <input id="s-bg-animation" type="checkbox" checked>
+          <span class="setting-toggle-state" id="bg-animation-state">Вкл</span>
+        </label>
+      </div>
       <button class="btn-save-settings" onclick="saveSettings()" data-i18n="index.save_settings">💾 Сохранить настройки</button>
       <div style="margin-top:8px;font-size:10px;color:var(--text3)">
         <span data-i18n="index.total_sites_hint">Итого сайтов на город:</span> <span id="s-total-hint" style="color:var(--cyan)">60</span>

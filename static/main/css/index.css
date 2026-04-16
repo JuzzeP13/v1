@@ -40,6 +40,15 @@ body.is-busy::after{
   will-change:opacity, filter;
   transform:translateZ(0);
 }
+body.bg-animation-disabled #starfield,
+body.bg-animation-disabled .orb{
+  display:none !important;
+}
+body.bg-animation-disabled::after,
+body.bg-animation-disabled.is-busy::after{
+  opacity:0 !important;
+  animation:none !important;
+}
 @keyframes drift{
   0%{transform:translateY(0px) translateX(0px)}
   25%{transform:translateY(-15px) translateX(8px)}
@@ -145,6 +154,27 @@ body.is-busy .chip-section{
 select.setting-input{padding:6px 8px;text-align:left}
 select.setting-input option{background:var(--bg2);color:var(--text)}
 textarea.setting-input{resize:none;font-size:11px;line-height:1.4}
+.setting-row-toggle{align-items:center}
+.setting-toggle{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  cursor:pointer;
+  user-select:none;
+}
+.setting-toggle input{
+  width:16px;
+  height:16px;
+  accent-color:var(--cyan);
+}
+.setting-toggle-state{
+  min-width:28px;
+  color:var(--cyan);
+  font-size:10px;
+  text-transform:uppercase;
+  letter-spacing:.6px;
+  text-align:right;
+}
 .btn-save-settings{margin-top:12px;background:linear-gradient(135deg,#d946ef,#f472b6);color:#0a0015;border:1px solid #d946ef;border-radius:7px;padding:8px 16px;font-family:var(--head);font-size:11px;font-weight:700;cursor:pointer;width:100%;transition:all .2s}
 .btn-save-settings:hover{background:linear-gradient(135deg,#f472b6,#dd33cf);box-shadow:0 0 16px rgba(217,70,239,.4)}
 
