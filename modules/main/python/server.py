@@ -4,6 +4,8 @@ Run with:
     python -m modules.main.python.server
 """
 
+import os
+
 from modules.main.python.app import app, socketio, db_init, init_auth, check_ollama_models, settings
 
 
@@ -24,9 +26,15 @@ def main() -> None:
         print("Command: ollama list")
 
     print("=" * 60)
-    socketio.run(app, host="0.0.0.0", port=5000, debug=False)
+    allow_unsafe = (os.environ.get("TISH_ALLOW_UNSAFE_WERKZEUG", "1") or "").strip().lower() in {"1", "true", "yes", "on"}
+    socketio.run(
+        app,
+        host="0.0.0.0",
+        port=5000,
+        debug=False,
+        allow_unsafe_werkzeug=allow_unsafe,
+    )
 
 
 if __name__ == "__main__":
     main()
-

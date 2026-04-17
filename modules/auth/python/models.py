@@ -41,6 +41,19 @@ def init_extended_db():
             last_sync TEXT
         )
     """)
+
+    # Миграция старых БД: добавляем недостающие поля интеграции с main-site.
+    user_columns = {row[1] for row in cursor.execute("PRAGMA table_info(users)").fetchall()}
+    user_migrations = {
+        "main_site_id": "ALTER TABLE users ADD COLUMN main_site_id INTEGER",
+        "main_site_api_token": "ALTER TABLE users ADD COLUMN main_site_api_token TEXT",
+        "priority": "ALTER TABLE users ADD COLUMN priority INTEGER DEFAULT 2",
+        "last_sync": "ALTER TABLE users ADD COLUMN last_sync TEXT",
+    }
+    for column_name, sql in user_migrations.items():
+        if column_name not in user_columns:
+            print(f"[MIGRATION] Добавляю колонку users.{column_name}...")
+            cursor.execute(sql)
     
     # Таблица сессий
     cursor.execute("""
@@ -150,6 +163,7 @@ def init_extended_db():
     # Индексы для ускорения запросов
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_users_username ON users(username)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_users_main_site_id ON users(main_site_id)")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_sessions_token ON sessions(session_token)")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id)")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_activity_user_id ON activity_log(user_id)")
