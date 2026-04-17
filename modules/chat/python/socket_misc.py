@@ -54,6 +54,9 @@ def on_settings(data):
         settings["screenshot_wait_max_ms"] = settings["screenshot_wait_min_ms"]
     if "vision_model" in data:
         settings["vision_model"] = data["vision_model"].strip()
+
+    apply_low_end_guardrails(source="ui_update")
+
     log_event(
         "settings_updated_from_ui",
         settings={
@@ -68,6 +71,7 @@ def on_settings(data):
             "screenshot_wait_min_ms": settings.get("screenshot_wait_min_ms"),
             "screenshot_wait_max_ms": settings.get("screenshot_wait_max_ms"),
             "vision_model": settings.get("vision_model"),
+            "vision_slow_threshold_ms": settings.get("vision_slow_threshold_ms"),
         },
     )
     emit_status(

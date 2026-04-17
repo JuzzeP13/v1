@@ -19,6 +19,15 @@ the app switches to `laptop_safe` mode automatically.
 - `page_timeout`
 - `vision_timeout_sec`
 - `vision_num_predict`
+- `vision_model` (fallback to an available vision model if configured one is missing)
+- `vision_slow_threshold_ms` (auto-degrade threshold for slow AI responses)
+
+On low-end/laptop-safe profiles, guardrails are applied automatically:
+
+- caps for heavy runtime values (`parallel`, `vision_num_predict`, screenshot size, etc.)
+- forced turbo prompt mode
+- prompt examples disabled
+- screenshot format forced to `jpeg`
 
 ## Disable auto-tune
 
@@ -43,7 +52,11 @@ TISH_SCREENSHOT_FORMAT=jpeg
 TISH_SCREENSHOT_QUALITY=60
 TISH_ANALYSIS_PROMPT_MODE=turbo
 TISH_USE_EXAMPLES_IN_PROMPT=0
+TISH_AUTO_SWITCH_VISION_MODEL=1
+TISH_VISION_SLOW_THRESHOLD_MS=55000
 ```
+
+`TISH_AUTO_SWITCH_VISION_MODEL` is optional and disabled by default.
 
 ## Force laptop-safe mode
 

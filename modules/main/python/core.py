@@ -87,8 +87,8 @@ log_event("diagnostics_log_ready", log_path=str(diagnostics_log_path()))
 # ДЕФОЛТНЫЕ НАСТРОЙКИ (меняются через UI)
 # ──────────────────────────────────────────────
 settings = {
-    "ollama_url":    "http://localhost:11434",
-    "vision_model":  "llava:latest",  # LLaVA быстрее для скриншотов
+    "ollama_url":    os.environ.get("OLLAMA_URL") or "http://localhost:11434",
+    "vision_model":  os.environ.get("VISION_MODEL") or "llava:latest",
     "max_large":     30,
     "max_niche":     30,
     "max_per_query": 3,
@@ -105,6 +105,8 @@ settings = {
     "screenshot_quality": 70,
     "analysis_prompt_mode": "full",
     "use_examples_in_prompt": True,
+    "auto_switch_vision_model": False,
+    "vision_slow_threshold_ms": 120000,
     "debug_verbose": False,
 }
 
@@ -122,6 +124,76 @@ HARDWARE_PROFILE = {
     "gpu_names": [],
     "gpu_max_vram_gb": 0.0,
 }
+
+LOW_END_RUNTIME_CAPS = {
+    "max_large": 6,
+    "max_niche": 6,
+    "max_per_query": 2,
+    "parallel": 2,
+    "page_timeout": 12000,
+    "vision_timeout_sec": 220,
+    "vision_num_predict": 180,
+    "search_max_passes": 6,
+    "screenshot_width": 1024,
+    "screenshot_height": 640,
+    "screenshot_quality": 60,
+}
+
+_OLLAMA_MODELS_CACHE = {"ts": 0.0, "names": []}
+_OLLAMA_MODELS_TTL_SEC = 45
+_VISION_RUNTIME_NOTICE_SENT = False
+
+_VISION_MODEL_HINTS = (
+    "llava",
+    "vision",
+    "vl",
+    "moondream",
+    "minicpm",
+    "bakllava",
+    "internvl",
+    "gemma3",
+    "phi3-vision",
+    "phi4-multimodal",
+)
+_LOW_END_MODEL_PRIORITY = (
+    "moondream",
+    "llama3.2-vision:3b",
+    "llama3.2-vision",
+    "qwen2.5vl:3b",
+    "qwen2.5-vl:3b",
+    "qwen2.5vl:7b",
+    "qwen2.5-vl:7b",
+    "minicpm-v:2b",
+    "minicpm-v:8b",
+    "phi3-vision",
+    "phi4-multimodal",
+    "llava:7b",
+    "llava",
+    "bakllava",
+)
+_GENERAL_MODEL_PRIORITY = (
+    "llava",
+    "qwen",
+    "vision",
+    "vl",
+    "moondream",
+    "minicpm",
+    "bakllava",
+)
+_HEAVY_MODEL_HINTS = (
+    "72b",
+    "70b",
+    "67b",
+    "57b",
+    "34b",
+    "32b",
+    "27b",
+    "24b",
+    "22b",
+    "20b",
+    "14b",
+    "13b",
+)
 
 
 def _safe_float(value, default=0.0):
@@ -158,6 +230,206 @@ def _read_env_str(name: str, default: str) -> str:
         return default
     value = str(value).strip()
     return value or default
+
+
+def _is_low_end_mode(profile: dict | None = None) -> bool:
+    p = profile or HARDWARE_PROFILE
+    tier = str(p.get("tier", "")).lower()
+    auto_mode = str(p.get("auto_mode", "")).lower()
+    return tier in {"low", "laptop_safe"} or auto_mode == "laptop_safe"
+
+
+def _looks_like_vision_model_name(model_name: str) -> bool:
+    name = str(model_name or "").strip().lower()
+    if not name:
+        return False
+    return any(token in name for token in _VISION_MODEL_HINTS)
+
+
+def _is_heavy_model_name(model_name: str) -> bool:
+    name = str(model_name or "").strip().lower()
+    if not name:
+        return False
+    return any(token in name for token in _HEAVY_MODEL_HINTS)
+
+
+def _fetch_ollama_model_names(force_refresh: bool = False) -> list[str]:
+    now = time.time()
+    if (
+        not force_refresh
+        and _OLLAMA_MODELS_CACHE["names"]
+        and (now - _OLLAMA_MODELS_CACHE["ts"]) <= _OLLAMA_MODELS_TTL_SEC
+    ):
+        return list(_OLLAMA_MODELS_CACHE["names"])
+
+    try:
+        r = req.get(f"{settings['ollama_url']}/api/tags", timeout=4)
+        r.raise_for_status()
+        models = r.json().get("models", [])
+        names = [
+            str(m.get("name")).strip()
+            for m in models
+            if isinstance(m, dict) and m.get("name")
+        ]
+        _OLLAMA_MODELS_CACHE["ts"] = now
+        _OLLAMA_MODELS_CACHE["names"] = names
+        return list(names)
+    except Exception as e:
+        if settings.get("debug_verbose"):
+            print(f"[DEBUG] Не удалось получить список моделей Ollama: {e}")
+        return list(_OLLAMA_MODELS_CACHE["names"])
+
+
+def _pick_model_by_priority(model_names: list[str], priorities: tuple[str, ...]) -> str:
+    lowered = [(name, str(name).lower()) for name in model_names]
+    for token in priorities:
+        token_l = token.lower()
+        for original, lower in lowered:
+            if token_l in lower:
+                return original
+    return ""
+
+
+def _select_best_vision_model(
+    model_names: list[str],
+    current_model: str,
+    low_end: bool,
+) -> str:
+    if not model_names:
+        return current_model
+
+    vision_models = [m for m in model_names if _looks_like_vision_model_name(m)]
+    if not vision_models:
+        return current_model if current_model in model_names else model_names[0]
+
+    if low_end:
+        low_end_candidate = _pick_model_by_priority(vision_models, _LOW_END_MODEL_PRIORITY)
+        if low_end_candidate:
+            return low_end_candidate
+        non_heavy = [m for m in vision_models if not _is_heavy_model_name(m)]
+        if current_model in non_heavy:
+            return current_model
+        if non_heavy:
+            return non_heavy[0]
+
+    if current_model in vision_models:
+        return current_model
+
+    candidate = _pick_model_by_priority(vision_models, _GENERAL_MODEL_PRIORITY)
+    if candidate:
+        return candidate
+    return vision_models[0]
+
+
+def auto_select_vision_model(reason: str = "runtime", force_refresh: bool = False) -> str:
+    fallback_model = "llava:latest"
+    current_model = str(settings.get("vision_model") or "").strip() or fallback_model
+    settings["vision_model"] = current_model
+
+    if not bool(settings.get("auto_switch_vision_model", True)):
+        return current_model
+
+    model_names = _fetch_ollama_model_names(force_refresh=force_refresh)
+    if not model_names:
+        return current_model
+
+    low_end = _is_low_end_mode()
+    selected = _select_best_vision_model(model_names, current_model, low_end=low_end)
+    if selected and selected != current_model:
+        settings["vision_model"] = selected
+        log_event(
+            "vision_model_autoselected",
+            reason=reason,
+            low_end_mode=low_end,
+            previous_model=current_model,
+            selected_model=selected,
+            available_models=model_names,
+        )
+        print(f"[AUTO-MODEL] {current_model or '-'} -> {selected} ({reason})")
+    return str(settings.get("vision_model") or "").strip() or fallback_model
+
+
+def apply_low_end_guardrails(source: str = "runtime") -> dict:
+    if not _is_low_end_mode():
+        return {}
+
+    changed = {}
+    for key, cap in LOW_END_RUNTIME_CAPS.items():
+        old_value = _safe_int(settings.get(key), cap)
+        new_value = min(old_value, cap)
+        if new_value != old_value:
+            settings[key] = new_value
+            changed[key] = {"from": old_value, "to": new_value}
+
+    if str(settings.get("analysis_prompt_mode", "full")).lower() != "turbo":
+        changed["analysis_prompt_mode"] = {"from": settings.get("analysis_prompt_mode"), "to": "turbo"}
+        settings["analysis_prompt_mode"] = "turbo"
+
+    if bool(settings.get("use_examples_in_prompt", True)):
+        changed["use_examples_in_prompt"] = {"from": True, "to": False}
+        settings["use_examples_in_prompt"] = False
+
+    if str(settings.get("screenshot_format", "jpeg")).lower() != "jpeg":
+        changed["screenshot_format"] = {"from": settings.get("screenshot_format"), "to": "jpeg"}
+        settings["screenshot_format"] = "jpeg"
+
+    if changed:
+        log_event(
+            "low_end_guardrails_applied",
+            source=source,
+            mode=str(HARDWARE_PROFILE.get("auto_mode") or HARDWARE_PROFILE.get("tier")),
+            changed=changed,
+        )
+    return changed
+
+
+def _degrade_vision_runtime_after_slow_call(duration_ms: int, trigger: str, model_name: str):
+    global _VISION_RUNTIME_NOTICE_SENT
+
+    if not _is_low_end_mode():
+        return
+
+    if trigger not in {"slow_success", "timeout"}:
+        return
+
+    threshold_ms = max(20000, _safe_int(settings.get("vision_slow_threshold_ms"), 90000))
+    if trigger == "slow_success" and duration_ms < threshold_ms:
+        return
+
+    changed = {}
+
+    old_predict = _safe_int(settings.get("vision_num_predict"), 120)
+    target_predict = 150 if trigger == "timeout" else 160
+    new_predict = max(128, min(old_predict, target_predict))
+    if new_predict != old_predict:
+        settings["vision_num_predict"] = new_predict
+        changed["vision_num_predict"] = {"from": old_predict, "to": new_predict}
+
+    old_timeout = _safe_int(settings.get("vision_timeout_sec"), 180)
+    new_timeout = max(120, min(old_timeout, 220))
+    if new_timeout != old_timeout:
+        settings["vision_timeout_sec"] = new_timeout
+        changed["vision_timeout_sec"] = {"from": old_timeout, "to": new_timeout}
+
+    old_threshold = _safe_int(settings.get("vision_slow_threshold_ms"), 90000)
+    new_threshold = max(30000, min(old_threshold, 100000))
+    if new_threshold != old_threshold:
+        settings["vision_slow_threshold_ms"] = new_threshold
+        changed["vision_slow_threshold_ms"] = {"from": old_threshold, "to": new_threshold}
+
+    if changed:
+        log_event(
+            "vision_runtime_degraded",
+            level="warn",
+            trigger=trigger,
+            duration_ms=duration_ms,
+            slow_threshold_ms=threshold_ms,
+            current_url=state.get("current_url"),
+            changed=changed,
+        )
+        if not _VISION_RUNTIME_NOTICE_SENT:
+            emit_status("⚙️ Включён эконом-режим AI для слабого ПК", "warn")
+            _VISION_RUNTIME_NOTICE_SENT = True
 
 
 def _looks_like_generic_cpu_name(value: str) -> bool:
@@ -416,6 +688,7 @@ def get_runtime_settings_payload():
             "screenshot_format": settings.get("screenshot_format"),
             "screenshot_quality": settings.get("screenshot_quality"),
             "analysis_prompt_mode": settings.get("analysis_prompt_mode"),
+            "vision_slow_threshold_ms": settings.get("vision_slow_threshold_ms"),
         },
         "hardware": dict(HARDWARE_PROFILE),
     }
@@ -435,12 +708,12 @@ def apply_hardware_auto_tune():
     # Conservative defaults for slower CPUs/iGPU, aggressive for stronger systems.
     tier_defaults = {
         "low": {
-            "max_large": 8,
-            "max_niche": 8,
+            "max_large": 5,
+            "max_niche": 5,
             "max_per_query": 2,
             "parallel": 2,
-            "page_timeout": 10000,
-            "vision_timeout_sec": 300,
+            "page_timeout": 12000,
+            "vision_timeout_sec": 220,
             "vision_num_predict": 170,
             "search_max_passes": 5,
             "screenshot_wait_min_ms": 150,
@@ -451,14 +724,16 @@ def apply_hardware_auto_tune():
             "screenshot_quality": 55,
             "analysis_prompt_mode": "turbo",
             "use_examples_in_prompt": False,
+            "auto_switch_vision_model": False,
+            "vision_slow_threshold_ms": 120000,
         },
         "laptop_safe": {
-            "max_large": 10,
-            "max_niche": 10,
+            "max_large": 5,
+            "max_niche": 5,
             "max_per_query": 2,
             "parallel": 2,
-            "page_timeout": 11000,
-            "vision_timeout_sec": 320,
+            "page_timeout": 12000,
+            "vision_timeout_sec": 240,
             "vision_num_predict": 180,
             "search_max_passes": 6,
             "screenshot_wait_min_ms": 180,
@@ -469,6 +744,8 @@ def apply_hardware_auto_tune():
             "screenshot_quality": 60,
             "analysis_prompt_mode": "turbo",
             "use_examples_in_prompt": False,
+            "auto_switch_vision_model": False,
+            "vision_slow_threshold_ms": 120000,
         },
         "medium": {
             "max_large": 20,
@@ -487,6 +764,8 @@ def apply_hardware_auto_tune():
             "screenshot_quality": 65,
             "analysis_prompt_mode": "full",
             "use_examples_in_prompt": True,
+            "auto_switch_vision_model": False,
+            "vision_slow_threshold_ms": 120000,
         },
         "high": {
             "max_large": 30,
@@ -505,6 +784,8 @@ def apply_hardware_auto_tune():
             "screenshot_quality": 80,
             "analysis_prompt_mode": "full",
             "use_examples_in_prompt": True,
+            "auto_switch_vision_model": False,
+            "vision_slow_threshold_ms": 120000,
         },
         "ultra": {
             "max_large": 40,
@@ -523,6 +804,8 @@ def apply_hardware_auto_tune():
             "screenshot_quality": 85,
             "analysis_prompt_mode": "full",
             "use_examples_in_prompt": True,
+            "auto_switch_vision_model": False,
+            "vision_slow_threshold_ms": 150000,
         },
     }
 
@@ -570,19 +853,49 @@ def apply_hardware_auto_tune():
     prompt_mode = _read_env_str("TISH_ANALYSIS_PROMPT_MODE", str(tuned.get("analysis_prompt_mode", "full"))).lower()
     tuned["analysis_prompt_mode"] = prompt_mode if prompt_mode in {"full", "turbo"} else "full"
     tuned["use_examples_in_prompt"] = _read_env_bool("TISH_USE_EXAMPLES_IN_PROMPT", bool(tuned.get("use_examples_in_prompt", True)))
+    tuned["auto_switch_vision_model"] = _read_env_bool(
+        "TISH_AUTO_SWITCH_VISION_MODEL",
+        bool(tuned.get("auto_switch_vision_model", False)),
+    )
+    tuned["vision_slow_threshold_ms"] = max(
+        15000,
+        min(240000, _read_env_int("TISH_VISION_SLOW_THRESHOLD_MS", int(tuned.get("vision_slow_threshold_ms", 90000)))),
+    )
     tuned["debug_verbose"] = _read_env_bool("TISH_DEBUG_VERBOSE", bool(settings.get("debug_verbose", False)))
 
     settings.update(tuned)
-
     profile["tier"] = tier
     HARDWARE_PROFILE = profile
+    apply_low_end_guardrails(source="auto_tune")
+    auto_select_vision_model(reason="auto_tune", force_refresh=True)
+    tuned_snapshot = {
+        "max_large": settings.get("max_large"),
+        "max_niche": settings.get("max_niche"),
+        "max_per_query": settings.get("max_per_query"),
+        "parallel": settings.get("parallel"),
+        "page_timeout": settings.get("page_timeout"),
+        "vision_model": settings.get("vision_model"),
+        "vision_timeout_sec": settings.get("vision_timeout_sec"),
+        "vision_num_predict": settings.get("vision_num_predict"),
+        "vision_slow_threshold_ms": settings.get("vision_slow_threshold_ms"),
+        "search_max_passes": settings.get("search_max_passes"),
+        "screenshot_wait_min_ms": settings.get("screenshot_wait_min_ms"),
+        "screenshot_wait_max_ms": settings.get("screenshot_wait_max_ms"),
+        "screenshot_width": settings.get("screenshot_width"),
+        "screenshot_height": settings.get("screenshot_height"),
+        "screenshot_format": settings.get("screenshot_format"),
+        "screenshot_quality": settings.get("screenshot_quality"),
+        "analysis_prompt_mode": settings.get("analysis_prompt_mode"),
+        "use_examples_in_prompt": settings.get("use_examples_in_prompt"),
+        "auto_switch_vision_model": settings.get("auto_switch_vision_model"),
+    }
     log_event(
         "hardware_autotune_applied",
         tier=tier,
         auto_mode=profile.get("auto_mode", "standard"),
         laptop_safe_reason=laptop_safe_reason,
         hardware=profile,
-        tuned=tuned,
+        tuned=tuned_snapshot,
     )
     print(
         "[AUTO-TUNE] "
@@ -592,6 +905,7 @@ def apply_hardware_auto_tune():
         f"RAM={profile['ram_total_gb']}GB | GPU={', '.join(profile['gpu_names']) or 'unknown'} | "
         f"parallel={settings['parallel']} | page_timeout={settings['page_timeout']} | "
         f"vision_timeout={settings['vision_timeout_sec']} | num_predict={settings['vision_num_predict']} | "
+        f"model={settings['vision_model']} | slow_ms={settings['vision_slow_threshold_ms']} | "
         f"search_passes={settings['search_max_passes']} | "
         f"shot_wait={settings['screenshot_wait_min_ms']}-{settings['screenshot_wait_max_ms']}ms | "
         f"shot={settings['screenshot_width']}x{settings['screenshot_height']} {settings['screenshot_format']} q{settings['screenshot_quality']} | "
@@ -928,18 +1242,29 @@ def db_init():
 def check_ollama_models():
     """Проверяет доступные модели в Ollama"""
     try:
-        r = req.get(f"{settings['ollama_url']}/api/tags", timeout=5)
-        r.raise_for_status()
-        models = r.json().get("models", [])
-        model_names = [m["name"] for m in models]
+        model_names = _fetch_ollama_model_names(force_refresh=True)
         print(f"[DEBUG] Доступные модели в Ollama: {model_names}")
-        
-        if settings["vision_model"] not in model_names:
-            print(f"[WARNING] Модель '{settings['vision_model']}' НЕ найдена!")
-            print(f"[INFO] Доступные модели: {', '.join(model_names)}")
-            return False
+
+        selected_model = str(settings.get("vision_model") or "").strip() or "llava:latest"
+        settings["vision_model"] = selected_model
+        if selected_model not in model_names:
+            fallback = _select_best_vision_model(model_names, selected_model, low_end=_is_low_end_mode())
+            if fallback and fallback in model_names:
+                settings["vision_model"] = fallback
+                selected_model = fallback
+                log_event(
+                    "vision_model_fallback_applied",
+                    reason="configured_model_missing",
+                    selected_model=selected_model,
+                    available_models=model_names,
+                )
+                print(f"[INFO] Модель была переключена на доступную: '{selected_model}'")
+            else:
+                print(f"[WARNING] Модель '{selected_model}' НЕ найдена!")
+                print(f"[INFO] Доступные модели: {', '.join(model_names)}")
+                return False
         else:
-            print(f"[OK] Модель '{settings['vision_model']}' найдена ✓")
+            print(f"[OK] Модель '{selected_model}' найдена ✓")
             return True
     except Exception as e:
         print(f"[ERROR] Не удалось проверить модели: {e}")
@@ -1329,12 +1654,14 @@ threading.Thread(target=_timer, daemon=True).start()
 # OLLAMA — ИСПРАВЛЕННЫЙ vision
 # ──────────────────────────────────────────────
 def call_vision(prompt: str, image_b64: str) -> str:
+    model_name = str(settings.get("vision_model") or "").strip() or "llava:latest"
+    settings["vision_model"] = model_name
     request_id = uuid.uuid4().hex[:12]
     timeout_sec = max(60, _safe_int(settings.get("vision_timeout_sec"), 180))
     num_predict = max(64, _safe_int(settings.get("vision_num_predict"), 800))
     started_at = time.time()
     payload = {
-        "model": settings["vision_model"],
+        "model": model_name,
         "messages": [{
             "role":    "user",
             "content": prompt,
@@ -1351,7 +1678,7 @@ def call_vision(prompt: str, image_b64: str) -> str:
     log_event(
         "vision_request_start",
         request_id=request_id,
-        model=settings["vision_model"],
+        model=model_name,
         ollama_url=settings["ollama_url"],
         prompt_chars=len(prompt or ""),
         image_b64_chars=len(image_b64 or ""),
@@ -1362,7 +1689,7 @@ def call_vision(prompt: str, image_b64: str) -> str:
         stop=state.get("stop"),
     )
     try:
-        emit_status(f"  🤖 Анализирую с {settings['vision_model']}...", "info")
+        emit_status(f"  🤖 Анализирую с {model_name}...", "info")
         
         r = req.post(
             f"{settings['ollama_url']}/api/chat",
@@ -1386,38 +1713,51 @@ def call_vision(prompt: str, image_b64: str) -> str:
             if content:
                 if settings.get("debug_verbose"):
                     print(f"[DEBUG] Получен ответ: {content[:200]}")
+                duration_ms = int((time.time() - started_at) * 1000)
                 log_event(
                     "vision_request_success",
                     request_id=request_id,
-                    duration_ms=int((time.time() - started_at) * 1000),
+                    duration_ms=duration_ms,
                     response_chars=len(content),
+                )
+                _degrade_vision_runtime_after_slow_call(
+                    duration_ms=duration_ms,
+                    trigger="slow_success",
+                    model_name=model_name,
                 )
                 return content
         
         if settings.get("debug_verbose"):
             print(f"[DEBUG] Неожиданный формат ответа: {resp}")
+        duration_ms = int((time.time() - started_at) * 1000)
         log_event(
             "vision_request_empty_response",
             level="warn",
             request_id=request_id,
-            duration_ms=int((time.time() - started_at) * 1000),
+            duration_ms=duration_ms,
             response_keys=list(resp.keys()),
         )
         emit_status(f"⚠ Модель ответила пустым ответом", "warn")
         return "Нет ответа от модели"
         
     except req.exceptions.Timeout:
-        msg = f"Timeout: модель долго обрабатывает. Проверь модель {settings['vision_model']}"
+        duration_ms = int((time.time() - started_at) * 1000)
+        msg = f"Timeout: модель долго обрабатывает. Проверь модель {model_name}"
         if settings.get("debug_verbose"):
             print(f"[DEBUG] {msg}")
         log_event(
             "vision_request_timeout",
             level="error",
             request_id=request_id,
-            duration_ms=int((time.time() - started_at) * 1000),
-            model=settings["vision_model"],
+            duration_ms=duration_ms,
+            model=model_name,
             current_url=state.get("current_url"),
             stop=state.get("stop"),
+        )
+        _degrade_vision_runtime_after_slow_call(
+            duration_ms=duration_ms,
+            trigger="timeout",
+            model_name=model_name,
         )
         emit_status(msg, "error")
         return msg
@@ -1439,11 +1779,12 @@ def call_vision(prompt: str, image_b64: str) -> str:
         msg = f"Ошибка анализа: {str(e)[:100]}"
         if settings.get("debug_verbose"):
             print(f"[DEBUG] {msg}")
+        duration_ms = int((time.time() - started_at) * 1000)
         log_event(
             "vision_request_error",
             level="error",
             request_id=request_id,
-            duration_ms=int((time.time() - started_at) * 1000),
+            duration_ms=duration_ms,
             error=str(e),
         )
         emit_status(msg, "error")
